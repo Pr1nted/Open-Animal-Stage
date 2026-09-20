@@ -28,14 +28,23 @@
       "id": "drosophila_male",
       "name": "Fruit fly",
       "detail": "adult male",
-      "dataset": "Janelia male CNS",
-      "neurons": null,
+      "dataset": "MaleCNS v1.0",
+      "neurons": 166691,
       "seat": null,
-      "station": null,
+      "station": true,
       "model": null,
-      "status": "verify",
-      "blocker": "the best-known male volume is MANC, a ventral nerve cord, not a brain; a human has to log in to neuPrint and confirm what exists",
-      "export": null
+      "status": "candidate",
+      "export": null,
+      "cell_types": 11691,
+      "coverage": "brain, optic lobes, neck connective and ventral nerve cord",
+      "released": "2026-06-08",
+      "licence": "CC-BY 4.0",
+      "neurotransmitters": "predicted",
+      "access": {
+        "neuprint": "https://male-cns.janelia.org/",
+        "r_package": "https://natverse.org/malecns/"
+      },
+      "note": "the sign problem is already solved here, and the licence is the most permissive on the roster"
     },
     {
       "id": "drosophila_larva",
@@ -84,7 +93,11 @@
       "station": true,
       "model": null,
       "status": "candidate",
-      "export": null
+      "export": null,
+      "synapses": 6618,
+      "gap_junctions": 1206,
+      "note": "1,206 gap junctions against 6,618 chemical synapses: a fifth of the wiring is electrical, and a LIF core that ignores that is wrong silently",
+      "published": "eLife 2016, 10.7554/eLife.16962"
     },
     {
       "id": "zebrafish_larva",

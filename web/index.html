@@ -1,0 +1,133 @@
+<meta charset="utf-8">
+<title>Open Animal Stage</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Open Fly's palette, deliberately: the two pages should look like one
+     project. The room is the same room; only the tenants differ. */
+  :root {
+    --room: #0C1113;
+    --glass: rgba(10, 16, 18, 0.8);
+    --glass-edge: rgba(237, 230, 214, 0.10);
+    --paper: #EDE6D6;
+    --muted: #8F9A97;
+    --amber: #F2B84B;
+    --teal: #6FB7AE;
+    --war: #E0624F;
+    --good: #7FC98A;
+    --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --body: "Figtree", "Helvetica Neue", Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--room); color: var(--paper);
+         font: 14px/1.5 var(--body); padding: 28px 20px 60px; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  h1 { margin: 0; font: 800 46px/0.9 var(--display); letter-spacing: .01em;
+       text-transform: uppercase; }
+  h1 span { color: var(--amber); }
+  .sub { margin: 10px 0 0; color: var(--muted); max-width: 62ch; text-wrap: balance; }
+  .early { display: inline-flex; gap: 7px; align-items: center; margin-top: 16px;
+           font: 600 11px/1 var(--mono); letter-spacing: .14em; color: #FBD9D3;
+           background: rgba(224,98,79,.18); border: 1px solid rgba(224,98,79,.5);
+           border-radius: 999px; padding: 6px 11px; }
+  h2 { font: 800 15px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+       color: var(--muted); margin: 40px 0 14px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); }
+  .card { background: var(--glass); border: 1px solid var(--glass-edge);
+          border-radius: 14px; padding: 15px; display: grid; gap: 7px; align-content: start; }
+  .card.seat { border-color: rgba(127,201,138,.42); }
+  .card .name { font: 600 17px/1.15 var(--body); }
+  .card .detail { color: var(--muted); font-size: 12.5px; }
+  .card .n { font: 600 13px/1 var(--mono); color: var(--teal); }
+  .tag { justify-self: start; font: 600 10px/1 var(--mono); letter-spacing: .1em;
+         text-transform: uppercase; border-radius: 999px; padding: 5px 9px;
+         border: 1px solid currentColor; }
+  .tag.plays { color: var(--good); }
+  .tag.watch { color: var(--amber); }
+  .tag.nope  { color: var(--war); }
+  .card .why { color: var(--muted); font-size: 12px; border-top: 1px solid var(--glass-edge);
+               padding-top: 7px; margin-top: 2px; }
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--glass-edge);
+           color: var(--muted); font-size: 12.5px; display: grid; gap: 8px; }
+  a { color: var(--amber); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--glass-edge); }
+  th { color: var(--muted); font: 600 10.5px/1 var(--mono); letter-spacing: .1em;
+       text-transform: uppercase; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--teal); }
+</style>
+
+<div class="wrap">
+  <h1>Open Animal <span>Stage</span></h1>
+  <p class="sub">Mapped brains play a strategy game against each other. A sister
+    project to <a href="https://github.com/Pr1nted/Open-Fly">Open Fly</a>, which
+    sat one fruit fly in front of
+    <a href="https://github.com/Pr1nted/Open-Doctrines">Open Doctrines</a> and
+    let it play.</p>
+  <p class="early"><i>◆</i> NOTHING PLAYS YET — THIS IS THE ROSTER</p>
+
+  <h2>The roster</h2>
+  <div class="grid" id="roster"></div>
+
+  <h2>What a seat needs</h2>
+  <table id="gates"></table>
+
+  <footer>
+    <div>No connectome is distributed here. Each dataset is fetched from its own
+      source under its own terms.</div>
+    <div>A pairing compares two mappings we wrote, not two animals. See
+      PREREGISTRATION.md.</div>
+  </footer>
+</div>
+
+<script>
+// The roster is DATA, read at load, not markup. Adding a species is a line in
+// data/roster.json and nothing else -- which is the difference between a page
+// that shows a roster and a page that has one hard-coded in two places.
+const GATES = [
+  ["The connectome is released", "and we can state its version"],
+  ["Every neuron has a sign", "or a defensible way to assign one"],
+  ["Sensory and motor sets exist", "named from the source, not chosen for a good result"],
+  ["The mapping is written down", "before the species plays"],
+  ["The model is validated", "against something that is not us"],
+];
+
+function card(s) {
+  const el = document.createElement("div");
+  el.className = "card" + (s.seat === true ? " seat" : "");
+  const plays = s.seat === true ? ["plays", "Takes a seat"]
+              : s.seat === false ? ["nope", "Does not play"]
+              : ["watch", s.status === "verify" ? "Unverified" : "Candidate"];
+  el.innerHTML =
+    `<div class="name">${s.name}</div>` +
+    `<div class="detail">${s.detail}</div>` +
+    `<div class="n">${s.neurons ? s.neurons.toLocaleString() + " neurons" : "count unknown"}</div>` +
+    `<div class="detail">${s.dataset}</div>` +
+    `<span class="tag ${plays[0]}">${plays[1]}</span>` +
+    (s.why_no_seat ? `<div class="why">${s.why_no_seat}</div>` :
+     s.blocker ? `<div class="why">${s.blocker}</div>` : "");
+  return el;
+}
+
+fetch("../data/roster.json")
+  .then(r => r.json())
+  .then(d => {
+    const host = document.getElementById("roster");
+    // Seats first, then the ones that might get there, then the ones that
+    // cannot -- so the page reads in the order somebody cares about.
+    const rank = s => s.seat === true ? 0 : s.seat === false ? 2 : 1;
+    d.species.slice().sort((a, b) => rank(a) - rank(b) || (b.neurons || 0) - (a.neurons || 0))
+             .forEach(s => host.appendChild(card(s)));
+  })
+  .catch(() => {
+    document.getElementById("roster").textContent =
+      "data/roster.json did not load — open this through a server, not as a file:// page.";
+  });
+
+const t = document.getElementById("gates");
+t.innerHTML = "<tr><th>Gate</th><th>Meaning</th></tr>" +
+  GATES.map(([a, b]) => `<tr><td>${a}</td><td class="detail">${b}</td></tr>`).join("");
+</script>
