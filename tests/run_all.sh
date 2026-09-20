@@ -10,6 +10,19 @@ for t in "$root"/tests/test_*.py; do
     python3 "$t" || fail=1
 done
 
+printf '\n=== the browser brain matches the reference, bit for bit ===\n'
+# Regenerated every run rather than trusted from disk: the reference is only a
+# contract if it describes what lif.py does TODAY.
+python3 "$root/tools/lif_reference.py" > "$root/data/lif_reference.json" \
+    2>/dev/null || fail=1
+if command -v node >/dev/null 2>&1; then
+    node "$root/tools/validate_lif.mjs" "$root/data/lif_reference.json" || fail=1
+else
+    # A skip is not a pass, and it says so.
+    echo "  SKIPPED  no node: the browser brain was NOT checked against lif.py"
+    fail=1
+fi
+
 printf '\n=== the roster is valid and agrees with itself ===\n'
 python3 - "$root" <<'PY' || fail=1
 import json, re, sys, os

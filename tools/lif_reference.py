@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Write a network and the spikes open_animal_stage/lif.py produces on it.
+
+    python3 tools/lif_reference.py > data/lif_reference.json
+    node tools/validate_lif.mjs data/lif_reference.json
+
+The JSON is the contract between the reference core and the browser one. It is
+generated, not hand-written, so it always describes what lif.py actually does.
+
+THE NETWORK IS CHOSEN TO BE HARD TO AGREE ON BY ACCIDENT
+
+(An earlier version drove it so gently that 22 of 300 neurons fired and only 2
+of them through recurrence. It passed -- and would have passed a port that got
+propagation completely wrong, because propagation barely happened. The weights
+and drive are now high enough that most of the activity is recurrent, and the
+script refuses to write a reference that is not.)
+
+Two neurons wired in a line would pass with an implementation that is wrong in
+half its branches. So: a few hundred neurons, a mix of excitatory, inhibitory
+and unknown signs, recurrent loops, several stimulation windows with changing
+drive, and enough activity that refractory periods, delays and inhibition all
+fire. A port that differs in any of those diverges within a few windows.
+"""
+import json
+import os
+import random
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from open_animal_stage.lif import Brain, Params          # noqa: E402
+from open_animal_stage.model import BrainSpec, Neuron    # noqa: E402
+from open_animal_stage.signs import Sign                 # noqa: E402
+
+SEED = 20260921
+N = 300
+EDGES = 2400
+WINDOWS = 12
+WINDOW_MS = 20.0
+
+PARAMS = dict(v_rest=-52.0, v_reset=-52.0, v_threshold=-45.0, tau_m=20.0,
+              tau_s=5.0, t_refractory=2.2, t_delay=1.8, dt=0.1)
+
+
+def build():
+    rng = random.Random(SEED)
+    signs = []
+    for _ in range(N):
+        r = rng.random()
+        # Mostly excitatory, a real minority inhibitory, and a few unknown --
+        # so the UNKNOWN-drops-the-edge rule is exercised, not assumed.
+        signs.append(Sign.EXCITATORY if r < 0.75 else
+                     Sign.INHIBITORY if r < 0.95 else Sign.UNKNOWN)
+    edges = set()
+    while len(edges) < EDGES:
+        a, b = rng.randrange(N), rng.randrange(N)
+        if a != b:
+            edges.add((a, b))
+    synapses = [(a, b, round(rng.uniform(10.0, 42.0), 3)) for a, b in sorted(edges)]
+    sensory = {"a": list(range(0, 20)), "b": list(range(20, 40))}
+    motor = {"x": list(range(280, 290)), "y": list(range(290, 300))}
+    neurons = [Neuron("n%d" % i, s) for i, s in enumerate(signs)]
+    spec = BrainSpec("reference", neurons, synapses, sensory, motor,
+                     {"neurons": "generated", "signs": "generated",
+                      "sensory": "generated", "motor": "generated"})
+    return spec, signs, rng
+
+
+def main():
+    spec, signs, rng = build()
+    spec.validate()
+    brain = Brain(spec, Params(**PARAMS))
+
+    schedule = []
+    windows = []
+    potentials = []
+    for w in range(WINDOWS):
+        # A drive that changes window to window, so a port that only matches
+        # the steady state still fails.
+        stim = {"a": round(rng.uniform(30.0, 90.0), 3),
+                "b": round(rng.uniform(10.0, 60.0), 3)}
+        schedule.append(stim)
+        for ch, amt in stim.items():
+            brain.stimulate(spec.sensory[ch], amt)
+        counts = brain.run(WINDOW_MS)
+        windows.append({str(k): v for k, v in sorted(counts.items())})
+        # THE MEMBRANE POTENTIALS, bit for bit, not just the spikes.
+        #
+        # Spike equality alone cannot see sub-threshold drift. Reordering one
+        # float expression in the port changes the last bit on 22% of operand
+        # pairs -- and still produced all 10,429 spikes identically, because
+        # the drift never happened to cross a threshold at a different step in
+        # twelve windows. Over a hundred-turn game it could. Python's float
+        # repr round-trips exactly through JSON, and JSON.parse gives back the
+        # same IEEE-754 double, so this comparison is exact end to end.
+        potentials.append(list(brain.v))
+
+    total = sum(sum(w.values()) for w in windows)
+
+    # A reference that is mostly the stimulus echoing back tests nothing about
+    # the network. Refuse to write one.
+    fired = set()
+    for w in windows:
+        fired |= set(w)
+    driven = {str(i) for ids in spec.sensory.values() for i in ids}
+    recurrent = len(fired - driven)
+    if recurrent < N // 4:
+        sys.exit("refusing to write a reference in which only %d of %d neurons "
+                 "fired through recurrence -- it would pass a port that got "
+                 "propagation wrong. Raise the weights or the drive."
+                 % (recurrent, N))
+    sys.stderr.write("  %d neurons fired, %d of them through recurrence\n"
+                     % (len(fired), recurrent))
+    json.dump({
+        "_comment": "generated by tools/lif_reference.py; do not edit",
+        "seed": SEED,
+        "params": PARAMS,
+        "window_ms": WINDOW_MS,
+        "neurons": [s.value for s in signs],
+        "synapses": [list(e) for e in spec.synapses],
+        "sensory": spec.sensory,
+        "schedule": schedule,
+        "windows": windows,
+        "potentials": potentials,
+        "total_spikes": total,
+    }, sys.stdout)
+    sys.stderr.write("reference: %d neurons, %d synapses, %d windows, %d spikes\n"
+                     % (N, len(spec.synapses), WINDOWS, total))
+
+
+if __name__ == "__main__":
+    main()

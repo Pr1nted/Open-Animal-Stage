@@ -17,3 +17,8 @@ __pycache__/
 node_modules/
 dist/
 .DS_Store
+
+# Raw downloads and the packed species the exporters derive from them.
+data/raw/
+web/species/
+data/lif_reference.json
