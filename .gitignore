@@ -1,0 +1,19 @@
+# Connectome exports and anything derived from them. Large, per-dataset
+# licensed, and in one case behind a personal token: none of it belongs here.
+data/export/
+data/*.bin
+data/*.npz
+web/data/
+*.swc
+
+# CAVE / cloud-volume credentials. The Fish1 token lands in the home directory
+# by default; this is belt and braces against a copy being made here.
+**/cave-secret.json
+**/secrets/
+
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+.DS_Store

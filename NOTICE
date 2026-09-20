@@ -1,0 +1,26 @@
+Open Animal Stage
+Copyright 2026 Pr1nted
+
+Code in this repository is licensed under the Apache License 2.0 (LICENSE).
+
+NO CONNECTOME IS DISTRIBUTED HERE. The datasets below are obtained by the
+tools in tools/ from their own sources, under their own terms. Anybody
+redistributing a derived export is responsible for checking the licence of the
+dataset it came from -- they are not all the same, and one of them is only
+reachable with a personal access token.
+
+Datasets this project reads:
+
+- FlyWire / FAFB, adult female Drosophila. Used via Open Fly.
+- Fish1, larval zebrafish (7dpf). Lichtman and Engert laboratories, Harvard
+  University, with the Connectomics team at Google. Accessed through CAVE.
+- MICrONS cubic millimetre, mouse visual cortex. IARPA MICrONS programme.
+- C. elegans connectome, Cook et al. (2019).
+- Drosophila larva connectome, Winding et al. (2023).
+- Ciona intestinalis larva connectome, Ryan et al. (2016).
+
+Code this project reuses:
+
+- The leaky integrate-and-fire core follows model.py from
+  philshiu/Drosophila_brain_model, Copyright (c) 2023 Philip Shiu and
+  Nico Spiller, MIT License -- by way of Open Fly, which already carries it.

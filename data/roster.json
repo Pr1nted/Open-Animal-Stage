@@ -1,0 +1,127 @@
+{
+  "_comment": [
+    "The roster as data, so the page and the tools read one list rather than",
+    "two that drift. `seat` is whether this species can take a seat in the",
+    "game; `station` is whether it has something to show on the stage at all.",
+    "The mouse is station-only on purpose -- see ROSTER.md.",
+    "",
+    "`export` records WHICH VERSION an export came from. A connectome under",
+    "active proofreading is not one dataset, it is a series of them, and an",
+    "export with no version on it cannot be reproduced."
+  ],
+  "checked": "2026-09-21",
+  "species": [
+    {
+      "id": "drosophila_female",
+      "name": "Fruit fly",
+      "detail": "adult female",
+      "dataset": "FlyWire / FAFB",
+      "neurons": 138639,
+      "seat": true,
+      "station": true,
+      "model": "shiu2024-lif",
+      "status": "working",
+      "via": "open-fly",
+      "export": null
+    },
+    {
+      "id": "drosophila_male",
+      "name": "Fruit fly",
+      "detail": "adult male",
+      "dataset": "Janelia male CNS",
+      "neurons": null,
+      "seat": null,
+      "station": null,
+      "model": null,
+      "status": "verify",
+      "blocker": "the best-known male volume is MANC, a ventral nerve cord, not a brain; a human has to log in to neuPrint and confirm what exists",
+      "export": null
+    },
+    {
+      "id": "drosophila_larva",
+      "name": "Fruit fly",
+      "detail": "larva",
+      "dataset": "Winding et al. 2023",
+      "neurons": 3016,
+      "seat": null,
+      "station": true,
+      "model": null,
+      "status": "candidate",
+      "export": null
+    },
+    {
+      "id": "c_elegans_herm",
+      "name": "Roundworm",
+      "detail": "hermaphrodite",
+      "dataset": "Cook et al. 2019",
+      "neurons": 302,
+      "seat": null,
+      "station": true,
+      "model": null,
+      "status": "candidate",
+      "note": "gap junctions are not chemical synapses; a LIF core that treats them alike is wrong invisibly",
+      "export": null
+    },
+    {
+      "id": "c_elegans_male",
+      "name": "Roundworm",
+      "detail": "male",
+      "dataset": "Cook et al. 2019",
+      "neurons": 385,
+      "seat": null,
+      "station": true,
+      "model": null,
+      "status": "candidate",
+      "export": null
+    },
+    {
+      "id": "ciona_larva",
+      "name": "Sea squirt",
+      "detail": "larva",
+      "dataset": "Ryan et al. 2016",
+      "neurons": 177,
+      "seat": null,
+      "station": true,
+      "model": null,
+      "status": "candidate",
+      "export": null
+    },
+    {
+      "id": "zebrafish_larva",
+      "name": "Zebrafish",
+      "detail": "larva, 7 days post-fertilisation",
+      "dataset": "Fish1",
+      "neurons": 187053,
+      "seat": null,
+      "station": true,
+      "model": null,
+      "status": "candidate",
+      "access": {
+        "client": "caveclient",
+        "datastack": "fish1_full",
+        "dataset": "fish1_v250915",
+        "server": "https://global.brain-wire-test.org/",
+        "token": "personal, by hand, never committed",
+        "materialization": 574
+      },
+      "note": "vglut2a and gad1b labels give each cell a sign, which is what makes a LIF model possible at all",
+      "export": null
+    },
+    {
+      "id": "mouse_v1",
+      "name": "Mouse",
+      "detail": "visual cortex",
+      "dataset": "MICrONS cubic millimetre",
+      "neurons": 120000,
+      "cells": 200000,
+      "synapses": 523000000,
+      "seat": false,
+      "station": true,
+      "model": null,
+      "status": "station-only",
+      "why_no_seat": "a cubic millimetre of visual cortex has no motor output, because it is not a whole brain",
+      "functional": "~75,000 pyramidal neurons with recorded responses to visual stimuli",
+      "export": null
+    }
+  ]
+}
