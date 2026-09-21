@@ -36,9 +36,132 @@ Each species gets a section below, committed before its first run, stating:
    group becomes one of the game's orders.
 4. **What would count as the mapping being bad**, written before the run.
 
-## Nothing here yet
+## Rules for every seat, written 2026-09-21 before any calibration ran
 
-No species has a section, because none has played. The fly's mapping lives in
-Open Fly's own PREREGISTRATION.md and will be restated here, unchanged, when it
-takes a seat on this stage — restated rather than referenced, so a reader of one
-repository is not sent to another to find out what was promised.
+**The game reaches every animal the same way.** Four numbers, computed exactly
+as Open Fly computes sugar, bitter, water and Johnston's organ
+(`web/decide.js`): *reward* (land gained + surplus), *harm* (land lost +
+deficit + new wars), *reserve* (treasury against income), *threat* (wars).
+Each becomes 0–200 Hz of Poisson input with a 10 Hz floor. A species states
+which of its own sensory channels carries which number, named from its source's
+annotations (`provenance.sensory` in its brain.json), and nothing else about the
+encoding differs between animals.
+
+**Orders come out the same way.** The source's own motor set (descending
+neurons for flies, motor neurons for the worm and the sea squirt) is dealt into
+the game's 39 action groups with Open Fly's seed, 783, and read by Open Fly's
+`choose()`, unchanged: the most active legal action per module up to the budget,
+silent actions not taken.
+
+**Every seat is an AI country with its policy switched off** (see
+`patches/opendoctrines-stage.patch`). The game's reflexes that are not the policy
+-- districts, disclosure, answering incoming diplomacy -- run for every seat
+alike. The viewer is the spectator; no seat is the player.
+
+**Seats move in rotating order**, all reading the same world before any moves.
+
+## The neuron, and how its one free constant is set
+
+Every species runs Open Fly's neuron (Shiu et al. 2024): the same equations and
+the same constants. For the **female fly** that is the published model. The
+**male fly** keeps those constants unchanged too, because the same model on both
+sexes is the point of that pairing.
+
+The **worm, the sea squirt and the fly larva** have no published model. Most
+worm neurons are graded rather than spiking, so a spiking neuron is a stated
+simplification for them. Their synapse counts come from different
+reconstructions at different scales, so a synaptic weight that suits FlyWire's
+counts need not suit theirs. For these three species only, `w_syn` is set by this
+rule, and by nothing else:
+
+1. **The measure.** Drive every sensory channel at 100 Hz (mid-scale) for one
+   200 ms window, seeds 1 to 5. Record the fraction of the 39 action groups in
+   which at least one neuron spiked, averaged over the seeds.
+2. **The target.** The same measure for the female fly under the same drive:
+   the one brain on the stage with a validated model.
+3. **The ladder.** `w_syn = 0.275 × 2^k` for k = 0, 1, …, 10. The species gets
+   the smallest k whose measure reaches the target. If none does, it gets k = 10
+   and says so.
+4. **Electrical synapses** (worm, sea squirt): `w_gap = 1`, so a one-contact
+   junction conducts as much as the membrane leaks. That is fixed, not searched.
+
+No game is played during calibration, and no game result may change these
+numbers. `tools/calibrate.mjs` implements the rule and writes what it measured
+into each brain.json's `params.calibrated`.
+
+## Conventions adopted where a source has no annotation, 2026-09-21
+
+A convention is our claim about an animal, written down before that animal
+plays, and shown to the viewer beside it. The rule for adopting one: take the
+**narrowest** convention that lets the mapping reach the motor set at all,
+judged by the calibration measure above, which is activity and not game results.
+
+**Fly larva, transmitters.** Only 243 of 2,952 neurons have a published
+transmitter, so on published signs alone three of the four senses reach no
+neuron and the larva holds every turn. Insect sensory neurons are
+overwhelmingly cholinergic, so the larva's *annotated sensory neurons* are
+assumed cholinergic (excitatory) and nothing else is:
+`tools/export_larva.py --unsigned sensory-cholinergic`. It then reaches the
+calibration target at k = 5. The broader `--unsigned all-cholinergic` keeps the
+whole connectome and reaches it at k = 1, and is not used, because assuming a
+transmitter for 2,606 unannotated cells claims more about the animal than
+leaving unmeasured connections out. 88% of the larva's connections are dropped
+as unsigned, and that is a fact about this seat, not a detail.
+
+## What would count as a mapping being bad, written before the first game
+
+- **A seat that never acts.** Holding every module on 90% or more of its turns
+  means the mapping does not reach the motor set, whatever the wiring does.
+- **A seat indistinguishable from its shuffled control** over 20 or more games
+  on fresh seeds. That is not a bad mapping, it is a null result about the
+  wiring, and it is reported as one.
+- **A pairing result described as one species beating another.** Never, in
+  any form.
+
+## Per species
+
+Each species' channels, their annotations and its motor set are in its
+brain.json `provenance`, written by its exporter in `tools/`. The female fly's
+are Open Fly's, restated unchanged: sugar, bitter and water gustatory receptor
+neurons and Johnston's organ, and 1,299 descending neurons.
+
+### Zebrafish larva, 7 dpf (Fish1) — written 2026-09-21, before its first turn
+
+Fish1 is the first species on this stage whose sensory and motor sets needed a
+**stated convention on top of the annotation**, so it gets its own document:
+**[docs/fish1-mapping.md](docs/fish1-mapping.md)**, which is normative and is
+summarised in the package's `brain.json` for the page to show the viewer.
+
+1. **The senses.** Named from Fish1's own published MECE region masks
+   (`gs://fish1-public/mece{0,1,2}_231218` — the Z-Brain atlas warped onto this
+   specimen): `chemosensory` (olfactory epithelium and the facial and
+   glossopharyngeal taste ganglia) = reward, `trigeminal` = harm,
+   `octavolateralis` (statoacoustic ganglion and lateral line) = threat,
+   `viscerosensory` (vagal ganglia) = reserve. **Three things are ours and are
+   conventions**: the join (no released table says which region a soma is in,
+   so the mask is sampled at the soma's published centroid), the grouping of
+   the ganglia into four channels by modality, and which channel carries which
+   signal. All three are in the document above, and in
+   `provenance.sensory`/`provenance.motor` marked "CONVENTION (not a source
+   annotation)".
+2. **The clock.** 200 ms per turn, as every other species on this stage.
+3. **The actions.** Every soma whose level-2 MECE label contains "motor" — the
+   eight published cranial motor nuclei (nIII, nIV, the two nV trigeminal
+   motorneuron clusters, the three VII facial motor clusters, the X vagus
+   cluster) — dealt into the 39 groups with seed 783 and read by Open Fly's
+   `choose()`, unchanged. The spinal cord and the reticulospinal/Mauthner set
+   were available and are **not** used; the document says why, so that a later
+   run that swaps them is visibly a different mapping and not a tuning.
+4. **What would count as the mapping being bad.** The general bar above, plus
+   one specific to the fish: its four channels are 2,844 / 35 / 182 / 29
+   neurons, an artefact of which peripheral ganglia happen to be
+   soma-segmented. If reward drowns the other three, that is this mapping's
+   fault and is reported as such. **The channel sizes are not to be evened out
+   after a result is seen**, which is the whole point of writing them here
+   first. The fish also has **no visual channel at all**: the retina is
+   annotated and contains no somata.
+
+Its sign is not a convention: `synapses_axde_label` calls every one of the
+29,474,316 synapses inhibitory or excitatory, a cell takes the majority of its
+own, and the result is checked against the confocal vglut2a/gad1b call that was
+held back from the export.

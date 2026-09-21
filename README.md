@@ -30,15 +30,16 @@ Every entry here is a real, released dataset. What differs is how complete it is
 whether a published *model* exists or we have to build one, and how the data is
 obtained. [ROSTER.md](ROSTER.md) is the working document; this is the summary.
 
-| Animal | Dataset | Scale | Can it play? |
+| Animal | Dataset | Scale | On the stage |
 |---|---|---|---|
-| Fruit fly, adult female | FlyWire / FAFB | 139k neurons | **Yes** — Open Fly already does it |
-| Fruit fly, adult male | Janelia male CNS | to verify | **Unknown**, see below |
-| Fruit fly, larva | Winding et al. 2023 | 3,016 neurons | Likely — complete brain, small |
-| Roundworm (*C. elegans*) | Cook et al. 2019 | 302 / 385 neurons | Likely — complete, both sexes |
-| Sea squirt larva (*Ciona*) | Ryan et al. 2016 | ~177 neurons | Likely — complete |
-| Zebrafish larva, 7dpf | **Fish1** | 187,053 somas | Plausible — needs a model built |
-| Mouse | **MICrONS** cubic millimetre | 120k neurons | **No.** It is visual cortex |
+| Fruit fly, adult female | FlyWire 783 | 138,639 neurons | **Plays.** Open Fly's brain, spike for spike |
+| Fruit fly, adult male | MaleCNS v1.0 | 166,700 neurons | **Plays**, with the female's mapping and constants |
+| Roundworm, hermaphrodite | Cook et al. 2019 | 302 neurons + gap junctions | **Plays** (calibrated, k = 3) |
+| Roundworm, male | Cook et al. 2019 | 385 neurons + gap junctions | **Plays** (calibrated, k = 4) |
+| Sea squirt larva | Ryan et al. 2016 | 207 neurons + gap junctions | **Plays**, but never reached the calibration target |
+| Fruit fly, larva | Winding et al. 2023 | 2,952 neurons | Exported, **not seated**: 89% of its wiring has no sign |
+| Zebrafish larva, 7dpf | Fish1 | 187,053 somas | Waiting on an export, which needs a personal CAVE token |
+| Mouse | MICrONS digital twin | 8,221 recorded neurons | **Watches** the world; cannot play |
 
 ### The two honest problems
 
@@ -63,23 +64,42 @@ feature.
 
 ## How it is built
 
-Mirrors Open Fly file for file where it can, so somebody who has read that
-repository can read this one.
+Mirrors Open Fly where it can, so somebody who has read that repository can
+read this one.
 
 ```
-open_animal_stage/     one module per species: brain, encode, decode
-  brain.py             the shared leaky integrate-and-fire core
-  species/             per-animal wiring: what a sense is, what an action is
-tools/                 export the connectome, pack it, stage the site
-web/                   the page: workers, scene, packed data
-scene/                 the stations, generated rather than hand-modelled
-data/                  roster and provenance, not the connectomes themselves
+web/                   the page: one stage, one worker per brain
+  index.html           the room: a station per seat, the world on the wall
+  brain.js             every species' neuron: Open Fly's, plus gap junctions
+                       and the shuffled control
+  decide.js            game -> four signals -> each species' senses; spikes -> orders
+  game-worker.js       Open Doctrines as WebAssembly, several seats in one world
+  mouse-worker.js      the MICrONS digital twin (ONNX), for the mouse's station
+  species/<id>/        packages the exporters write (gitignored; docs/species-format.md)
+patches/               the multi-seat agent session for Open Doctrines
+tools/                 exporters, calibration, and the checks below
+open_animal_stage/     the Python reference: signs, the LIF core, the shuffle, the stage
 ```
 
-A connectome is not in this repository. The exports are large, several of them
-are licensed per-dataset, and one of them (Fish1) needs a personal access token
-that must never be committed. `tools/` fetches and derives; `data/roster.json`
-records exactly which version of which dataset an export came from.
+## Run it locally
+
+```bash
+tools/build_web_agent.sh ../OpenDoctrines     # web/agent: the game, patched for several seats
+.venv/bin/python tools/export_female_fly.py   # needs ../Open-Fly's web/data
+.venv/bin/python tools/export_male_fly.py     # MaleCNS v1.0, public bucket, ~150 MB
+.venv/bin/python tools/export_celegans.py     # WormWiring + Wang et al. 2024
+.venv/bin/python tools/export_ciona.py        # eLife 16962 source data
+node tools/calibrate.mjs --write              # the preregistered rule; no game is played
+python3 -m http.server 8102 --directory web
+```
+
+The checks:
+
+```bash
+bash tests/run_all.sh                 # exports, signs, LIF, shuffle, stage, roster
+node tools/stage_check.mjs            # several seats, one world; no seat is secretly the AI's
+node tools/check_fly_identity.mjs     # the stage's fly is Open Fly's, spike for spike
+```
 
 ## What is not claimed
 

@@ -22,7 +22,63 @@
       "model": "shiu2024-lif",
       "status": "working",
       "via": "open-fly",
-      "export": null
+      "export": {
+        "dataset_version": "FlyWire 783 (Shiu et al. 2024 Connectivity_783), via Open Fly web/data",
+        "exported": "2026-09-21",
+        "exporter": "tools/export_female_fly.py",
+        "package": "web/species/drosophila_female",
+        "sources": {
+          "connectome": {
+            "path": "~/CLionProjects/Open-Fly/web/data/connectome.bin",
+            "format": "SFC1",
+            "sha256": "8c406180094b6c2ef411b7ffccdea85c2fb8c0648225a07e10f7d371c0906ab2"
+          },
+          "brain_json": {
+            "path": "~/CLionProjects/Open-Fly/web/data/brain.json",
+            "sha256": "3ce50aef586b4acbc191bad6896b24b00b6fc88c46518b59ad9deea386709fb7"
+          },
+          "names": {
+            "path": "~/.open_fly/fly/Completeness_783.csv",
+            "url": "https://github.com/philshiu/Drosophila_brain_model",
+            "sha256": "bbb847a4cc2caaa7a16349722d220c087317b946d148d4d592d94d250617a311"
+          }
+        },
+        "licence": "FlyWire data CC BY-NC 4.0 (https://flywire.ai/guidelines); model MIT (philshiu/Drosophila_brain_model)",
+        "senses": {
+          "sugar": "reward",
+          "bitter": "harm",
+          "water": "reserve",
+          "jon": "threat"
+        },
+        "calibrated": true,
+        "counts": {
+          "neurons": 138639,
+          "synapse_edges": 15091983,
+          "dropped_unknown_sign": 0,
+          "sensory": {
+            "sugar": 20,
+            "bitter": 20,
+            "water": 18,
+            "jon": 145
+          },
+          "motor_neurons": 1299,
+          "connectome_bin_bytes": 91106476,
+          "brain_json_bytes": 2930897
+        },
+        "validation": {
+          "neurons": {
+            "got": 138639,
+            "paper": 138639
+          },
+          "connections": {
+            "got": 15091983,
+            "paper": 15091983
+          },
+          "groups_identical_to_open_fly": true
+        }
+      },
+      "redistribute": true,
+      "redistribute_why": "FlyWire is CC BY-NC 4.0: redistributable with attribution, NON-COMMERCIAL only. This is what Open Fly's public page already does."
     },
     {
       "id": "drosophila_male",
@@ -34,7 +90,78 @@
       "station": true,
       "model": null,
       "status": "candidate",
-      "export": null,
+      "export": {
+        "dataset_version": "MaleCNS v1.0 flat connectome, minconf 0.5",
+        "exported": "2026-09-21",
+        "exporter": "tools/export_male_fly.py",
+        "package": "web/species/drosophila_male",
+        "token_required": false,
+        "sources": {
+          "annotations": {
+            "path": "data/raw/malecns_v1.0/body-annotations-male-cns-v1.0-minconf-0.5.feather",
+            "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/body-annotations-male-cns-v1.0-minconf-0.5.feather",
+            "gs": "gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/body-annotations-male-cns-v1.0-minconf-0.5.feather",
+            "sha256": "2177e246113e4cfbf1e7772ec37c6da1955ff22e8063d0b1f833101f99a9a3b2"
+          },
+          "neurotransmitters": {
+            "path": "data/raw/malecns_v1.0/body-neurotransmitters-male-cns-v1.0.feather",
+            "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/body-neurotransmitters-male-cns-v1.0.feather",
+            "gs": "gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/body-neurotransmitters-male-cns-v1.0.feather",
+            "sha256": "95c9289220663abeb3409f3ad9e5a7f8a53f8093f5139d15502cd08da8879621"
+          },
+          "weights": {
+            "path": "data/raw/malecns_v1.0/connectome-weights-male-cns-v1.0-minconf-0.5.feather",
+            "url": "https://storage.googleapis.com/flyem-male-cns/v1.0/connectome-data/flat-connectome/connectome-weights-male-cns-v1.0-minconf-0.5.feather",
+            "gs": "gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/connectome-weights-male-cns-v1.0-minconf-0.5.feather",
+            "sha256": "e35da783d1c686b2b58b3b87cd6a403ae43bfcfba8bff28e08ef752c1a56afc1"
+          }
+        },
+        "licence": "MaleCNS v1.0, FlyEM / HHMI Janelia, CC-BY 4.0 (https://creativecommons.org/licenses/by/4.0/); cite the MaleCNS release (https://male-cns.janelia.org/)",
+        "senses": {
+          "sugar": "reward",
+          "bitter": "harm",
+          "water": "reserve",
+          "jon": "threat"
+        },
+        "calibrated": false,
+        "counts": {
+          "neurons": 166700,
+          "synapse_edges": 24904953,
+          "dropped_unknown_sign": 677985,
+          "sensory": {
+            "sugar": 17,
+            "bitter": 19,
+            "water": 9,
+            "jon": 264
+          },
+          "motor_neurons": 1314,
+          "connectome_bin_bytes": 150096540,
+          "brain_json_bytes": 1450349
+        },
+        "dropped_unknown_sign_synapses": 2733429,
+        "nt_column": "consensus_nt",
+        "unmatched": {
+          "jon_flywire_types_absent_on_left": [
+            "JO-unclear"
+          ],
+          "left_JO_bodies_with_no_flywireType": 7,
+          "water_LB2d": "the female's water list has one LB2d; no receptor identity for LB2d is published, so the male's water is LB3a alone",
+          "female_counts": {
+            "sugar": 20,
+            "bitter": 20,
+            "water": 18,
+            "jon": 145,
+            "descending": 1299
+          }
+        },
+        "validation": {
+          "neurons": {
+            "got": 166700,
+            "paper": 166691,
+            "note": "bodies with a superclass; 9 more than announced, unexplained"
+          }
+        }
+      },
       "cell_types": 11691,
       "coverage": "brain, optic lobes, neck connective and ventral nerve cord",
       "released": "2026-06-08",
@@ -44,7 +171,9 @@
         "neuprint": "https://male-cns.janelia.org/",
         "r_package": "https://natverse.org/malecns/"
       },
-      "note": "the sign problem is already solved here, and the licence is the most permissive on the roster"
+      "note": "the sign problem is already solved here, and the licence is the most permissive on the roster",
+      "redistribute": true,
+      "redistribute_why": "MaleCNS v1.0 is CC-BY 4.0: redistributable with attribution"
     },
     {
       "id": "drosophila_larva",
@@ -52,11 +181,77 @@
       "detail": "larva",
       "dataset": "Winding et al. (2023)",
       "neurons": 3016,
-      "seat": null,
+      "seat": true,
       "station": true,
       "model": null,
       "status": "candidate",
-      "export": null
+      "export": {
+        "dataset_version": "Winding et al. (2023) Science 379:eadd9330, Data S1; NT from public L1 CNS CATMAID 'mw neurotransmitter'",
+        "exported": "2026-09-21",
+        "exporter": "tools/export_larva.py",
+        "package": "web/species/drosophila_larva",
+        "sources": {
+          "data_s1": {
+            "path": "data/raw/winding2023/Supplementary-Data-S1.zip",
+            "url": "https://github.com/brain-networks/larval-drosophila-connectome/raw/main/Supplementary-Data-S1.zip",
+            "sha256": "8c1f43809ed5d527ba61b154e377cc21da26383a75eda8aab85ce05607a72a4c"
+          },
+          "catmaid_nt": {
+            "path": "data/raw/winding2023/catmaid/",
+            "url": "https://l1em.catmaid.virtualflybrain.org/1/annotations/query-targets",
+            "sha256": {
+              "annotations.json": "b2466ca5c5ab7f4ff17991ebb1a4dc70efeaa1e03dfb7ec563dd38597ce3bfa4",
+              "nt_22265070.json": "34a12606205fff6856b22015863653a77d603130e103072d25a0e049124fb2c0",
+              "nt_22265077.json": "f4e800b6a25a727e1c341bb3bb585cf60f18c2c7f1d698cf9cda0bede28a88ae",
+              "nt_22265088.json": "e299551f8f591a36ab9e313fb27e338fc71585b145686fa60b36cbb92bc866fb",
+              "nt_22265128.json": "e8b5091919f54dc7f1a9eced03ff57b9f971b7f45f32b66cfafbcf69cd7a957b",
+              "nt_22265488.json": "57f8cc24a1b8316a319f02d3e1d31e21c4087dc31c0e2e10b05d5e73f89fccc3",
+              "nt_22274404.json": "6de33756e6d3ee07ae0ba66b8ef76bff6de1012a60c228fe2e7058bcdccbf33f",
+              "nt_22274419.json": "0515d2c3876f65f3e96035ba56cc133ac71d658d98e48c8858280d3805f0871a"
+            }
+          }
+        },
+        "licence": "Winding et al. 2023, Science 379:eadd9330, Data S1 (supplementary material; no open licence stated: cite the paper, do not redistribute the export until cleared). CATMAID annotations from the public Virtual Fly Brain L1 CNS project; cite Winding et al. 2023",
+        "senses": {
+          "olfactory": "reward",
+          "noci": "harm",
+          "gut": "reserve",
+          "mechano-Ch": "threat"
+        },
+        "calibrated": false,
+        "counts": {
+          "neurons": 2952,
+          "synapse_edges": 12292,
+          "dropped_unknown_sign": 98385,
+          "sensory": {
+            "olfactory": 42,
+            "noci": 6,
+            "gut": 85,
+            "mechano-Ch": 12
+          },
+          "motor_neurons": 346,
+          "connectome_bin_bytes": 85580,
+          "brain_json_bytes": 38210
+        },
+        "signed_neurons": 243,
+        "dropped_unknown_sign_synapses": 289309,
+        "validation": {
+          "neurons": {
+            "got": 2952,
+            "paper": 3016,
+            "note": "Data S1 matrix holds the 2,952 analysed neurons"
+          },
+          "synapses": {
+            "got": 352611,
+            "paper": 548000,
+            "note": "matrix total between the 2,952; the paper counts all synapses"
+          }
+        },
+        "blocker": "only 243/2,952 neurons carry a released neurotransmitter; 82% of synapses dropped; the noci, gut and mechano-Ch channels have no signed outgoing synapse, so harm, reserve and threat reach no neuron"
+      },
+      "redistribute": false,
+      "redistribute_why": "Winding et al. 2023 supplementary data states no licence",
+      "warning": "its senses are wired on OUR convention, not the source's: the larva's sensory neurons are assumed cholinergic because only 243 of 2,952 neurons have a published transmitter. 88% of its connections are still dropped as unsigned."
     },
     {
       "id": "c_elegans_herm",
@@ -69,7 +264,64 @@
       "model": null,
       "status": "candidate",
       "note": "gap junctions are not chemical synapses; a LIF core that treats them alike is wrong invisibly",
-      "export": null
+      "export": {
+        "dataset_version": "SI 5 Connectome adjacency matrices, corrected July 2020 (WormWiring.org); SI 4 Cell lists",
+        "exported": "2026-09-21",
+        "exporter": "tools/export_celegans.py",
+        "package": "web/species/c_elegans_herm",
+        "sources": {
+          "cell_lists": {
+            "path": "data/raw/cook2019/SI 4 Cell lists.xlsx",
+            "url": "https://wormwiring.org/si/SI%204%20Cell%20lists.xlsx",
+            "sha256": "f5c524407e196ba8045cfb86fb996d41730e4b899a7c24b0c525a4d2ad0a7376"
+          },
+          "adjacency": {
+            "path": "data/raw/cook2019/SI 5 Connectome adjacency matrices, corrected July 2020.xlsx",
+            "url": "https://wormwiring.org/si/SI%205%20Connectome%20adjacency%20matrices%2C%20corrected%20July%202020.xlsx",
+            "sha256": "1f4fdbf84746b69b49a8da0816f52787860ce349b638dce37924ba80f90c70c9"
+          },
+          "herm_nt": {
+            "path": "data/raw/wang2024/elife-95402-supp2-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/95402/elife-95402-supp2-v1.xlsx",
+            "sha256": "ad5175b5e53748acf77c6dfff1b5efcf15ed4364091239bd2def0095544eb18c"
+          },
+          "male_nt": {
+            "path": "data/raw/wang2024/elife-95402-supp3-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/95402/elife-95402-supp3-v1.xlsx",
+            "sha256": "34e8fddd31bcb2227d30c31cabb0d0c6d98d477140974d89d48d423987a41724"
+          },
+          "dimorphic_nt": {
+            "path": "data/raw/wang2024/elife-95402-supp4-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/95402/elife-95402-supp4-v1.xlsx",
+            "sha256": "d69a4d78e7fe01bbf890398a8c4de34862900461fad05068619404e2580c5e1a"
+          }
+        },
+        "licence": "Connectome: Cook et al. (2019) Nature 571:63-71, doi:10.1038/s41586-019-1352-7, Supplementary Information 4 and 5 as distributed by WormWiring.org (Emmons lab; page footer 'Copyright (c) 2020'). No open licence is stated on the files or the site; the paper is a Springer Nature article (NIH author manuscript PMC6889226). Treat the derived export as NOT cleared for redistribution until the authors are asked. Neurotransmitter atlas: Wang et al. (2024) eLife 13:RP95402, doi:10.7554/eLife.95402, CC-BY 4.0.",
+        "counts": {
+          "neurons": 302,
+          "chemical_synapses": 3161,
+          "gap_junctions": 1091,
+          "dropped_unknown_sign": 548,
+          "motor_neurons": 126
+        },
+        "validation": {
+          "neurons": {
+            "got": 302,
+            "paper": 302
+          },
+          "chemical_edges_all_cells": {
+            "got": 4879,
+            "paper": 4887
+          },
+          "gap_edges_all_cells_incl_self": {
+            "got": 1450,
+            "paper": 1447
+          },
+          "tolerance": "neurons exact; edge totals within 1% (SI 5 was corrected in July 2020, after the paper's counts)"
+        }
+      },
+      "redistribute": false,
+      "redistribute_why": "Cook et al. 2019 / WormWiring state no open licence (Copyright Emmons Lab)"
     },
     {
       "id": "c_elegans_male",
@@ -81,7 +333,64 @@
       "station": true,
       "model": null,
       "status": "candidate",
-      "export": null
+      "export": {
+        "dataset_version": "SI 5 Connectome adjacency matrices, corrected July 2020 (WormWiring.org); SI 4 Cell lists",
+        "exported": "2026-09-21",
+        "exporter": "tools/export_celegans.py",
+        "package": "web/species/c_elegans_male",
+        "sources": {
+          "cell_lists": {
+            "path": "data/raw/cook2019/SI 4 Cell lists.xlsx",
+            "url": "https://wormwiring.org/si/SI%204%20Cell%20lists.xlsx",
+            "sha256": "f5c524407e196ba8045cfb86fb996d41730e4b899a7c24b0c525a4d2ad0a7376"
+          },
+          "adjacency": {
+            "path": "data/raw/cook2019/SI 5 Connectome adjacency matrices, corrected July 2020.xlsx",
+            "url": "https://wormwiring.org/si/SI%205%20Connectome%20adjacency%20matrices%2C%20corrected%20July%202020.xlsx",
+            "sha256": "1f4fdbf84746b69b49a8da0816f52787860ce349b638dce37924ba80f90c70c9"
+          },
+          "herm_nt": {
+            "path": "data/raw/wang2024/elife-95402-supp2-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/95402/elife-95402-supp2-v1.xlsx",
+            "sha256": "ad5175b5e53748acf77c6dfff1b5efcf15ed4364091239bd2def0095544eb18c"
+          },
+          "male_nt": {
+            "path": "data/raw/wang2024/elife-95402-supp3-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/95402/elife-95402-supp3-v1.xlsx",
+            "sha256": "34e8fddd31bcb2227d30c31cabb0d0c6d98d477140974d89d48d423987a41724"
+          },
+          "dimorphic_nt": {
+            "path": "data/raw/wang2024/elife-95402-supp4-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/95402/elife-95402-supp4-v1.xlsx",
+            "sha256": "d69a4d78e7fe01bbf890398a8c4de34862900461fad05068619404e2580c5e1a"
+          }
+        },
+        "licence": "Connectome: Cook et al. (2019) Nature 571:63-71, doi:10.1038/s41586-019-1352-7, Supplementary Information 4 and 5 as distributed by WormWiring.org (Emmons lab; page footer 'Copyright (c) 2020'). No open licence is stated on the files or the site; the paper is a Springer Nature article (NIH author manuscript PMC6889226). Treat the derived export as NOT cleared for redistribution until the authors are asked. Neurotransmitter atlas: Wang et al. (2024) eLife 13:RP95402, doi:10.7554/eLife.95402, CC-BY 4.0.",
+        "counts": {
+          "neurons": 385,
+          "chemical_synapses": 3390,
+          "gap_junctions": 1281,
+          "dropped_unknown_sign": 658,
+          "motor_neurons": 118
+        },
+        "validation": {
+          "neurons": {
+            "got": 385,
+            "paper": 385
+          },
+          "chemical_edges_all_cells": {
+            "got": 5306,
+            "paper": 5315
+          },
+          "gap_edges_all_cells_incl_self": {
+            "got": 1758,
+            "paper": 1755
+          },
+          "tolerance": "neurons exact; edge totals within 1% (SI 5 was corrected in July 2020, after the paper's counts)"
+        }
+      },
+      "redistribute": false,
+      "redistribute_why": "Cook et al. 2019 / WormWiring state no open licence (Copyright Emmons Lab)"
     },
     {
       "id": "ciona_larva",
@@ -93,11 +402,63 @@
       "station": true,
       "model": null,
       "status": "candidate",
-      "export": null,
+      "export": {
+        "dataset_version": "eLife 5:e16962 VOR, Figure 16 source data 1 and 2 (v1)",
+        "exported": "2026-09-21",
+        "exporter": "tools/export_ciona.py",
+        "package": "web/species/ciona_larva",
+        "sources": {
+          "cell_types": {
+            "path": "data/raw/ryan2016/elife-16962-fig1-data1-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/16962/elife-16962-fig1-data1-v1.xlsx",
+            "sha256": "51d6b349462fadc9994c79c6f0ec679723d994524f398f31d0d20e1c2169a8a6"
+          },
+          "neurons": {
+            "path": "data/raw/ryan2016/elife-16962-fig3-data1-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/16962/elife-16962-fig3-data1-v1.xlsx",
+            "sha256": "d9606d04413804fa4223127bd82f53247fea6e329f76fb6f968684435242d908"
+          },
+          "chemical": {
+            "path": "data/raw/ryan2016/elife-16962-fig16-data1-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/16962/elife-16962-fig16-data1-v1.xlsx",
+            "sha256": "ba0903d44fc14e960654d6f43025b89d222b0dd5461f3988b486824e29a2b7cb"
+          },
+          "gap": {
+            "path": "data/raw/ryan2016/elife-16962-fig16-data2-v1.xlsx",
+            "url": "https://cdn.elifesciences.org/articles/16962/elife-16962-fig16-data2-v1.xlsx",
+            "sha256": "e04dfb10193fca8f73edeb0c662ab6383e11d53b864d6167bfbc16f976a63bd1"
+          }
+        },
+        "sign_source": "Kourakis et al. 2019, eLife 8:e44753 (CC-BY 4.0), by cell class",
+        "licence": "Ryan, Lu & Meinertzhagen (2016) eLife 5:e16962, doi:10.7554/eLife.16962, CC-BY 4.0 (source data files included). Transmitter assignments: Kourakis et al. (2019) eLife 8:e44753, doi:10.7554/eLife.44753, CC-BY 4.0. A derived export may be redistributed with attribution to both.",
+        "counts": {
+          "neurons": 207,
+          "cns_neurons": 180,
+          "pns_neurons": 27,
+          "chemical_pairs": 1663,
+          "gap_pairs": 410,
+          "dropped_unknown_sign": 1313,
+          "motor_neurons": 14
+        },
+        "validation": {
+          "cns_neurons": {
+            "got": 180,
+            "paper": 177,
+            "tolerance": 5
+          },
+          "cns_neurons_note": "Held to +/- 5, not equality: the released tables disagree with each other (Figure 1 lists seven PR-III ids for a class it counts as six, and gives several classes as 'n [m]'), and the CNS set here is every matrix label that Figure 3 or Figure 1 types as a CNS neuron.",
+          "pns_neurons_in_matrix": 27,
+          "chemical_pairs_neuron_to_neuron": 2976,
+          "gap_pairs_neuron_neuron": 410,
+          "paper_counts_not_comparable": "The paper counts synapses (6618, of which 1772 neuromuscular) and gap junctions (1206). The released matrices give one cumulative depth per cell pair, so the export has pairs, not synapses; no released table lets the synapse totals be recomputed (Figure 3's per-neuron sums give 5,809 presynaptic sites and 968 gap junctions over the CNS neurons alone). Neuromuscular depth in the matrix: 896.3 um (Figure 4 source data: 435.4 um for synapses > 1 section)."
+        }
+      },
       "synapses": 6618,
       "gap_junctions": 1206,
       "note": "1,206 gap junctions against 6,618 chemical synapses: a fifth of the wiring is electrical, and a LIF core that ignores that is wrong silently",
-      "published": "eLife 2016, 10.7554/eLife.16962"
+      "published": "eLife 2016, 10.7554/eLife.16962",
+      "redistribute": true,
+      "redistribute_why": "eLife 16962 source data is CC-BY 4.0: redistributable with attribution"
     },
     {
       "id": "zebrafish_larva",
@@ -118,7 +479,9 @@
         "materialization": 574
       },
       "note": "vglut2a and gad1b labels give each cell a sign, which is what makes a LIF model possible at all",
-      "export": null
+      "export": null,
+      "redistribute": null,
+      "redistribute_why": "Fish1 terms not yet read; treat as not redistributable until they are"
     },
     {
       "id": "mouse_v1",
@@ -134,7 +497,9 @@
       "status": "station-only",
       "why_no_seat": "a cubic millimetre of visual cortex has no motor output, because it is not a whole brain",
       "functional": "~75,000 pyramidal neurons with recorded responses to visual stimuli",
-      "export": null
+      "export": null,
+      "redistribute": null,
+      "redistribute_why": "MICrONS data is CC BY 4.0 but the twin's released weights state no licence"
     }
   ]
 }
