@@ -407,6 +407,17 @@ function paintInto(ids, W, H, image, owners, colorHex, edge) {
 // Built from primitives rather than modelled, as docs/stage.md asks: a change to
 // the roster must not need an artist. Each returns { root, animate(t, drive) }
 // where drive (0..1) is how much the brain just did.
+// A PHASE THAT IS ACCUMULATED, NOT MULTIPLIED. The animals used sin(t * f)
+// with f following the brain's activity -- which decays every frame, so f
+// changed every frame, and d(t*f)/dt = f + t*df/dt: ten minutes in, a small
+// change of speed moved the phase hundreds of radians a second and every
+// animal jittered. A phaser adds f*dt each frame, so a change of speed changes
+// the speed and nothing else. The mouse's sniff was already written this way,
+// which is why it was the one animal that did not shake.
+function phaser() {
+  let phase = 0, last = null;
+  return (t, freq) => { if (last !== null) phase += Math.min(0.1, Math.max(0, t - last)) * freq; last = t; return phase; };
+}
 function stripedTexture(base, stripe, n, vertical) {
   const cv = document.createElement("canvas"); cv.width = vertical ? 16 : 256; cv.height = vertical ? 256 : 16;
   const c = cv.getContext("2d"); c.fillStyle = base; c.fillRect(0, 0, cv.width, cv.height); c.fillStyle = stripe;
@@ -447,7 +458,8 @@ function makeLarva() {
   for (let i = 0; i < 12; i++) { const r = 0.016 * (1 - Math.abs(i - 6) / 12) + 0.006; const s = ellipsoid(r, r * 0.85, 0.014, mat, 16); s.position.set(0, r, -0.08 + i * 0.015); root.add(s); segs.push(s); }
   const hook = ellipsoid(0.004, 0.004, 0.006, std(0x1b120a)); hook.position.set(0, 0.012, -0.093); root.add(hook);
   root.scale.setScalar(2.2);
-  return { root, animate(t, drive) { segs.forEach((s, i) => { s.scale.z = 0.014 * (1 + (0.15 + drive * 0.4) * Math.sin(t * 5 - i * 0.6)); }); } };
+  const ph = phaser();
+  return { root, animate(t, drive) { const p = ph(t, 5); segs.forEach((s, i) => { s.scale.z = 0.014 * (1 + (0.15 + drive * 0.4) * Math.sin(p - i * 0.6)); }); } };
 }
 // A tube whose centre line and radius are recomputed every frame: the worm's
 // whole body, the mouse's tail. `radius(u)` is the profile along the length,
@@ -527,16 +539,18 @@ function makeWorm(male) {
   inner.forEach((o) => root.add(o.m));
   root.add(gut, body);
   let travelled = 0, lastT = 0;
+  const crawl = phaser();
   const P = new THREE.Vector3(), Q = new THREE.Vector3();
   return { root, animate(t, drive) {
     // Forward along a circle round the lawn, the body bent by a wave that
     // travels from head to tail; the brain's activity speeds the crawl.
     const dt = Math.min(0.1, t - lastT); lastT = t;
     travelled += dt * (0.012 + drive * 0.03);
+    const wave = crawl(t, 3 + drive * 6);
     const Rc = 0.108, amp = 0.017, k = 2 * Math.PI * 1.5;
     const at = (u) => {
       const s = travelled - u * L, a = s / Rc;
-      const lat = amp * Math.sin(k * u - t * (3 + drive * 6)) * Math.min(1, u * 6);
+      const lat = amp * Math.sin(k * u - wave) * Math.min(1, u * 6);
       return new THREE.Vector3(Math.cos(a) * (Rc + lat), R * 0.9, Math.sin(a) * (Rc + lat));
     };
     body.userData.update(at);
@@ -555,7 +569,8 @@ function makeCiona() {
   const ocellus = ellipsoid(0.004, 0.004, 0.004, std(0x1d140e)); ocellus.position.set(0.004, 0.03, -0.045); root.add(ocellus);
   for (let i = 0; i < 20; i++) { const r = 0.006 * (1 - i / 24); const b = ellipsoid(r, r * 0.6, r, mat, 10); root.add(b); tail.push(b); }
   root.scale.setScalar(2.6);
-  return { root, animate(t, drive) { const f = 4 + drive * 10; tail.forEach((b, i) => { const u = i / 19; b.position.set(0.02 * u * Math.sin(u * 4 - t * f), 0.02, -0.015 + u * 0.1); }); } };
+  const ph = phaser();
+  return { root, animate(t, drive) { const p = ph(t, 4 + drive * 10); tail.forEach((b, i) => { const u = i / 19; b.position.set(0.02 * u * Math.sin(u * 4 - p), 0.02, -0.015 + u * 0.1); }); } };
 }
 function makeFish() {
   const root = new THREE.Group(), body = [];
@@ -568,9 +583,10 @@ function makeFish() {
   const eyes = [-1, 1].map((s) => { const e = ellipsoid(0.013, 0.013, 0.011, std(0x0c0c10, { roughness: 0.15, metalness: 0.3 })); root.add(e); return { e, s }; });
   const fin = new THREE.Mesh(new THREE.CircleGeometry(0.03, 20), new THREE.MeshStandardMaterial({ color: 0xe8e4da, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false })); fin.scale.set(0.3, 1, 1); root.add(fin);
   root.scale.setScalar(2.6);
+  const swim = phaser();
   return { root, animate(t, drive) {
-    const f = 6 + drive * 18, a = 0.012 + drive * 0.02;
-    const wave = (u) => a * u * u * Math.sin(u * 5 - t * f);
+    const p = swim(t, 6 + drive * 18), a = 0.012 + drive * 0.02;
+    const wave = (u) => a * u * u * Math.sin(u * 5 - p);
     body.forEach(({ s, u }) => s.position.set(wave(u), 0, -0.07 + u * 0.19));
     stripe.forEach(({ d, u }) => d.position.set(wave(u), 0.022 * (1 - u * 0.7), -0.07 + u * 0.19));
     yolk.position.set(wave(0.2), -0.016, -0.03);
@@ -689,8 +705,15 @@ async function loadModels(ids) {
 // axis each bone turns about is the world's up (or side) direction expressed in
 // that bone's own frame at rest, measured once at load.
 function chainOf(root, prefix) {
+  // BONES ONLY, AND BY THEIR NAME PLUS WHATEVER THE LOADER ADDED. three.js's
+  // GLTFLoader keeps names unique by suffixing a repeat -- the sea squirt's
+  // "tail_2" arrived as "tail_2_1" -- and a lookup by exact name stopped the
+  // chain there, so 2 of its 12 tail bones moved. A gap is an error, not an end.
+  const re = new RegExp(`^${prefix}(\\d+)(?:_\\d+)?$`), found = new Map();
+  root.traverse((o) => { if (o.isBone) { const m = o.name.match(re); if (m && !found.has(+m[1])) found.set(+m[1], o); } });
   const out = [];
-  for (let i = 0; ; i++) { const b = root.getObjectByName(`${prefix}${i}`); if (!b) break; out.push(b); }
+  for (let i = 0; found.has(i); i++) out.push(found.get(i));
+  if (out.length !== found.size) console.warn(`${prefix}*: bones ${[...found.keys()].sort((a, b) => a - b).join(",")} are not one unbroken chain`);
   root.updateMatrixWorld(true);
   const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3(1, 0, 0), q = new THREE.Quaternion();
   return out.map((b) => {
@@ -724,7 +747,13 @@ function modelled(id) {
     }
   });
   const root = new THREE.Group(); root.add(model);
-  const N = (n) => restOf(model.getObjectByName(n));
+  // By name, or by the name the loader gave it when it kept names unique.
+  const N = (n) => {
+    let hit = model.getObjectByName(n);
+    if (!hit) { const re = new RegExp(`^${n}_\\d+$`); model.traverse((o) => { if (!hit && re.test(o.name)) hit = o; }); }
+    if (!hit) console.warn(`${id}: no part named ${n}`);
+    return restOf(hit);
+  };
   let lastT = 0, travelled = 0, sniff = 0;
   if (id.startsWith("drosophila_") && id !== "drosophila_larva") {
     const head = N("head"), legs = [N("leg_front_L"), N("leg_front_R")], wings = [N("wing_L"), N("wing_R")];
@@ -735,16 +764,17 @@ function modelled(id) {
     } };
   }
   if (id === "drosophila_larva") {
-    const spine = chainOf(model, "spine_");
+    const spine = chainOf(model, "spine_"), peri = phaser();
     return { root, animate(t, drive) {
       // Peristalsis: a contraction running tail to head, and the head sweeping.
-      spine.forEach((l, i) => bend(l, i < 3 ? Math.sin(t * 1.1) * 0.12 : 0, Math.sin(t * (3 + drive * 5) + i * 0.7) * 0.05));
+      const p = peri(t, 3 + drive * 5);
+      spine.forEach((l, i) => bend(l, i < 3 ? Math.sin(t * 1.1) * 0.12 : 0, Math.sin(p + i * 0.7) * 0.05));
     } };
   }
   if (id.startsWith("c_elegans")) {
     // Crawls round the lawn: a pivot at the dish centre carries it forward,
     // the bones carry the wave from nose to tail.
-    const spine = chainOf(model, "spine_"), pivot = new THREE.Group();
+    const spine = chainOf(model, "spine_"), pivot = new THREE.Group(), crawl = phaser();
     root.remove(model); pivot.add(model); root.add(pivot);
     model.position.set(0.105, 0, 0); model.rotation.y = 0;   // tangent to the circle, facing -Z
     return { root, animate(t, drive) {
@@ -754,7 +784,7 @@ function modelled(id) {
       // the raw sine the body's overall heading drifted and the worm swung
       // off its plate; taking out the mean keeps the wave travelling along a
       // body that goes where the worm is going.
-      const w = t * (3 + drive * 6);
+      const w = crawl(t, 3 + drive * 6);
       const ang = spine.map((_, i) => 0.13 * Math.sin(i * 0.4 - w));
       const mean = ang.reduce((a, b) => a + b, 0) / (ang.length || 1);
       spine.forEach((l, i) => bend(l, ang[i] - mean));
@@ -762,13 +792,14 @@ function modelled(id) {
   }
   if (id === "ciona_larva") {
     const tail = chainOf(model, "tail_");
-    return { root, animate(t, drive) { const f = 4 + drive * 10; tail.forEach((l, i) => bend(l, (0.05 + i * 0.012) * Math.sin(i * 0.5 - t * f))); } };
+    const beat = phaser();
+    return { root, animate(t, drive) { const p = beat(t, 4 + drive * 10); tail.forEach((l, i) => bend(l, (0.05 + i * 0.012) * Math.sin(i * 0.5 - p))); } };
   }
   if (id === "zebrafish_larva") {
-    const spine = chainOf(model, "spine_"), eyes = [N("eye_L"), N("eye_R")];
+    const spine = chainOf(model, "spine_"), eyes = [N("eye_L"), N("eye_R")], swim = phaser();
     return { root, animate(t, drive) {
-      const f = 5 + drive * 16, a = 0.03 + drive * 0.05;
-      spine.forEach((l, i) => bend(l, a * (0.3 + i / spine.length) * Math.sin(i * 0.55 - t * f)));
+      const p = swim(t, 5 + drive * 16), a = 0.03 + drive * 0.05;
+      spine.forEach((l, i) => bend(l, a * (0.3 + i / spine.length) * Math.sin(i * 0.55 - p)));
       const sac = Math.round(Math.sin(t * 0.4) * 2) * 0.08;   // saccades: steps, not drift
       eyes.forEach((e) => turn(e, 0, sac, 0));
       // The bob moves the model INSIDE the root: the station puts the root in
@@ -1035,7 +1066,7 @@ function mouseLook() {
     m.busy = false; m.looks++; m.ms = r.ms; m.ep = r.ep;
     const a = m.st.brain.activity; let above = 0;
     for (let u = 0; u < r.response.length; u++) { const v = r.response[u]; if (v > 1) above++; a[u] = Math.max(a[u], Math.min(1, Math.max(0, (v - 0.8) * 0.9))); }
-    m.above = above; m.st.drive = Math.min(1, above / (0.3 * r.response.length));
+    m.above = above; m.st.driveTarget = Math.min(1, above / (0.3 * r.response.length));
     drawMouseMonitor(m); showBoard();
   }).catch((e) => { m.busy = false; m.state = "fault"; m.stateLine = String(e.message || e).slice(0, 80); showBoard(); });
 }
@@ -1364,7 +1395,7 @@ async function playForever() {
           for (const i of s.motor) motor += r.counts[i];
           const act = s.st.brain && s.st.brain.activity;
           for (let i = 0; i < r.counts.length; i++) if (r.counts[i]) { fired++; if (act) act[i] = Math.max(act[i], Math.min(1, 0.45 + 0.18 * Math.log2(1 + r.counts[i]))); }
-          s.st.drive = Math.min(1, fired / 400);
+          s.st.driveTarget = Math.min(1, fired / 400);
           s.st.haze.intensity = 0.3 + s.st.drive * 1.2;
         } else if (!r.fault) {
           const { tokens } = choose(r.counts, s.meta.groups, p, r.tSeed);
@@ -1374,7 +1405,7 @@ async function playForever() {
           for (const i of s.motor) motor += r.counts[i];
           const act = s.st.brain && s.st.brain.activity;
           for (let i = 0; i < r.counts.length; i++) if (r.counts[i]) { fired++; if (act) act[i] = Math.max(act[i], Math.min(1, 0.45 + 0.18 * Math.log2(1 + r.counts[i]))); }
-          s.st.drive = Math.min(1, orders.length / 6 + motor / Math.max(50, s.motor.length * 2));
+          s.st.driveTarget = Math.min(1, orders.length / 6 + motor / Math.max(50, s.motor.length * 2));
           s.st.haze.intensity = 0.3 + s.st.drive * 1.2;
         }
         s.turns.push({ pos: p, orders, motor, fired, bySignal: r.bySignal, ms: r.ms || 0, fault: r.fault });
@@ -1416,6 +1447,13 @@ resize();
 if (new URLSearchParams(location.search).has("debug")) window.__stage = { camera, scene, G, views: () => VIEWS, goTo, game, brains };
 const clock = new THREE.Clock();
 let lastMs = performance.now();
+// A turn sets how active the animal should look; it gets there over about
+// half a second, and the target fades between turns. Snapping to it made every
+// turn a visible jolt.
+function easeDrive(st, dt) {
+  st.driveTarget = (st.driveTarget || 0) * Math.exp(-dt * 0.8);
+  st.drive += (st.driveTarget - st.drive) * (1 - Math.exp(-dt * 2.5));
+}
 function loop(nowMs) {
   const dt = Math.min(0.1, (nowMs - lastMs) / 1000); lastMs = nowMs;
   const now = clock.getElapsedTime();
@@ -1437,7 +1475,7 @@ function loop(nowMs) {
   const k = Math.exp(-dt * 2.2);
   for (const s of G.seats) {
     const st = s.st; if (!st) continue;
-    st.drive *= Math.exp(-dt * 0.8);
+    easeDrive(st, dt);
     if (!reduceMotion) st.animal.animate(now, s.state === "dead" ? 0 : st.drive);
     if (st.brain) {
       const a = st.brain.activity; for (let i = 0; i < a.length; i++) a[i] = a[i] > 0.002 ? a[i] * k : 0;
@@ -1446,7 +1484,7 @@ function loop(nowMs) {
     }
   }
   if (G.mouse && G.mouse.st) {
-    const st = G.mouse.st; st.drive *= Math.exp(-dt * 0.8);
+    const st = G.mouse.st; easeDrive(st, dt);
     if (!reduceMotion) st.animal.animate(now, st.drive);
     if (st.brain) { const a = st.brain.activity; for (let i = 0; i < a.length; i++) a[i] = a[i] > 0.002 ? a[i] * k : 0; st.brain.actAttr.needsUpdate = true; if (!reduceMotion) st.brain.holder.rotation.y = now * 0.12; }
   }
