@@ -723,8 +723,8 @@ async function loadModels(ids) {
   const loader = new THREE.GLTFLoader();
   await Promise.all(ids.map(async (id) => {
     try {
-      const head = await fetch(`./models/${id}.glb`, { method: "HEAD" });
-      if (!head.ok || !(head.headers.get("content-type") || "").match(/gltf|octet|binary/)) return;
+      // Loaded directly, no HEAD probe (see packed.js): a missing or wrong file
+      // throws here and the species keeps its generated placeholder.
       const gltf = await new Promise((res, rej) => loader.load(`./models/${id}.glb`, res, undefined, rej));
       MODELS.set(id, gltf.scene);
     } catch (e) { console.warn(`model ${id}:`, e.message || e); }
@@ -1324,6 +1324,10 @@ function renderPresets() {
   if (has("drosophila_female") && has("drosophila_male")) P.push(["Female vs male fly", [{ species: "drosophila_female" }, { species: "drosophila_male" }]]);
   for (const s of playable()) { P.push([`${shortLabel(s)} vs its shuffled self`, [{ species: s.id }, { species: s.id, shuffled: true }]]); break; }
   if (has("c_elegans_herm") && has("ciona_larva")) P.push(["Worm vs sea squirt", [{ species: "c_elegans_herm" }, { species: "ciona_larva" }]]);
+  // The published build has no worms (their data is local-only), and its
+  // first game should still be small: two brains of a few MB, not the flies'
+  // ~240 MB.
+  if (has("zebrafish_larva") && has("ciona_larva")) P.push(["Zebrafish vs sea squirt", [{ species: "zebrafish_larva" }, { species: "ciona_larva" }]]);
   const actors = playable().filter((s) => !isWatcher(s));
   if (actors.length > MAX_SEATS) console.warn(`${actors.length} animals can play but a stage seats ${MAX_SEATS}: "Everyone" leaves some out`);
   if (actors.length > 2) P.push([actors.length > MAX_SEATS ? `The first ${MAX_SEATS} who can play` : "Everyone who can play", actors.slice(0, MAX_SEATS).map((s) => ({ species: s.id }))]);
@@ -1664,7 +1668,7 @@ function loop(nowMs) {
     // takes half a minute to unpack, so opening on them looked like a page
     // that does not load. The first game uses small brains; the flies are one
     // click away.
-    const light = presets.find(([name]) => /Worm vs sea squirt/.test(name)) || presets[0];
+    const light = presets.find(([name]) => /Worm vs sea squirt/.test(name)) || presets.find(([name]) => /Zebrafish vs sea squirt/.test(name)) || presets[0];
     plan = light ? light[1].map((x) => ({ iso: "", shuffled: false, ...x })) : [{ species: playable()[0].id, iso: "", shuffled: false }];
     loadText.textContent = "Starting Open Doctrines…";
     await new Promise((res, rej) => game.on((m) => {

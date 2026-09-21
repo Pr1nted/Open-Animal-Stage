@@ -22,9 +22,11 @@ let sess = null, meta = null, state = null, looks = 0, ep = "";
 // (tools/pack_web.py). The parts are joined and checked against the manifest's
 // sha256 before the runtime sees a byte; a local build may have the whole file.
 async function loadModel(base) {
-  const man = await fetch(new URL("model.pack.json", base));
-  if (man.ok && (man.headers.get("content-type") || "").includes("json")) {
-    const m = await man.json();
+  // A manifest only if it parses as one: a host may answer a missing file with
+  // 200 and its index.html, and a content-type check trusts the host.
+  let m = null;
+  try { const man = await fetch(new URL("model.pack.json", base)); if (man.ok) { const j = JSON.parse(await man.text()); if (Array.isArray(j.parts)) m = j; } } catch { m = null; }
+  if (m) {
     const parts = await Promise.all(m.parts.map(async (name) => {
       for (let attempt = 1; ; attempt++) {
         try { const r = await fetch(new URL(name, base)); if (!r.ok) throw new Error(`${name}: ${r.status}`); return new Uint8Array(await r.arrayBuffer()); }

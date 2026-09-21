@@ -5,7 +5,7 @@
 // then for each seat's position and orders by index. The world resolves the
 // turn once, after every seat has played.
 import createOpenDoctrinesAgent from "./agent/OpenDoctrinesAgent.mjs";
-import { loadPacked } from "./packed.js";
+import { loadPacked, hasPacked } from "./packed.js";
 
 let od = null, api = null;
 
@@ -15,8 +15,8 @@ let od = null, api = null;
 // A local build has the .data whole and no manifest; then the module fetches it
 // itself, as Emscripten does by default.
 const packUrl = new URL("./agent/OpenDoctrinesAgent.pack.json", import.meta.url).href;
-const ready = fetch(packUrl, { method: "HEAD" })
-  .then((r) => (r.ok && (r.headers.get("content-type") || "").includes("json")
+const ready = hasPacked(packUrl)
+  .then((packed) => (packed
     ? loadPacked(packUrl, (got, total) => self.postMessage({ type: "progress", got, total }))
     : null))
   .then((dataPackage) => createOpenDoctrinesAgent({

@@ -16,6 +16,19 @@
 // own DecompressionStream, and the result is checked against the manifest
 // before anything uses it. To the page it is one fetch with one progress bar.
 
+// Is there a manifest at this URL? A plain GET, never HEAD: itch.io serves
+// games from a CDN, and a HEAD probe is the kind of request a CDN may answer
+// differently. And it must PARSE as a manifest -- some hosts answer a missing
+// file with 200 and the site's index.html, which a status check believes.
+export async function hasPacked(manifestUrl) {
+  try {
+    const r = await fetch(manifestUrl, { cache: "no-cache" });
+    if (!r.ok) return false;
+    const m = JSON.parse(await r.text());
+    return Array.isArray(m.parts) && typeof m.size === "number";
+  } catch { return false; }
+}
+
 export async function loadPacked(manifestUrl, onProgress = () => {}) {
   const base = new URL(manifestUrl, self.location.href);
   const res = await fetch(base, { cache: "no-cache" });
