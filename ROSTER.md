@@ -215,12 +215,24 @@ inputs and outputs is worth an afternoon before we write ours.
   `relaxin_177172_output_080426` (60 cells, nothing published about it).
   `synapses_axde_label` is a *reference table* on `synapses_axde`, so one query
   returns the tag and both root ids.
+- **Do not page this server with limit/offset.** It does not order rows stably
+  at depth. Paging 29.5M rows 200k at a time returned **2.7M of 18.4M rows
+  twice** — 8 of 91 adjacent page pairs overlapped, by up to 37,492 rows — and
+  therefore never returned as many others. Nothing in the response says so.
+  Page by disjoint, contiguous ranges of `target_id` instead (a flat
+  `filter_greater_dict`/`filter_less_dict`; the *keyed* form and any filter on
+  a joined table's column both 500), split a range whenever it comes back full,
+  and check the total against the released row count at the end.
+  `tools/fish1_export.py` does all four.
 - **Signs are solved, per synapse.** `synapses_axde_label` calls every one of
   the 29.5M axon-to-dendrite synapses excitatory or inhibitory. A LIF neuron
-  needs one sign per cell, so a cell takes the majority of its own; the
+  needs one sign per cell, so a cell takes the majority of its own (40.2% of
+  presynaptic cells disagree with themselves; an exact tie is dropped). The
   confocal vglut2a/gad1b call in `somas.cell_type` is **held back from the
   export and used to check it**, which is the only validation in the package
-  that does not come from us.
+  that does not come from us: the two instruments **agree on 87.9%** of the
+  1,012 cells where both are trustworthy (≥ 10 labelled synapses and within
+  10 um of a registration landmark).
 - **Region annotation exists and is public.** `gs://fish1-public/mece{0,1,2,3}_231218`
   are a four-level MECE brain-region segmentation with names in
   `segment_properties` — the Z-Brain atlas (Randlett et al. 2015) warped onto
@@ -240,12 +252,28 @@ inputs and outputs is worth an afternoon before we write ours.
 - **Model** Open Fly's LIF (Shiu et al. 2024) over Fish1, uncalibrated at
   export; `tools/calibrate.mjs` sets `w_syn` by the preregistered rule. There
   is no published Fish1 model, so the neuron is a stated simplification.
-- **Status** **Exported and seated.** `tools/fish1_regions.py` then
+- **The axons are not proofread, and that is the blocker.** Joining the
+  synapses to the somata at v704: a **post**synaptic endpoint lands on a
+  soma-bearing segment ~32% of the time, a **pre**synaptic one ~2%, and **both
+  0.80%** (235,703 of 29,474,316) — the presynaptic side is spread over
+  millions of one-synapse axon fragments. Confirmed without the join: asked how many supervoxels they hold,
+  soma-bearing segments hold 152–5,600 and unmatched presynaptic segments hold
+  1–4, and `is_latest_roots()` says every one of them is current, so they are
+  fragments and not stale ids. The soma-to-soma graph that remains is mostly
+  disconnected, and
+  **no directed path runs from any sensory channel to any motor neuron**, so no
+  sense can move the seat. This is a fact about how much of the volume has been
+  proofread, not about the mapping or the animal.
+- **Status** **Exported, not seated.** `tools/fish1_regions.py` then
   `tools/fish1_export.py --sensory-convention mece-ganglia-v1` →
-  `web/species/zebrafish_larva/`. Its mapping is preregistered in
-  `docs/fish1-mapping.md`; the known risk is that its four sensory channels are
-  very unequal (2,844 / 35 / 182 / 29) and that it has **no visual channel** —
-  the retina is annotated and contains no somata.
+  `web/species/zebrafish_larva/`. The mapping is preregistered in
+  `docs/fish1-mapping.md` and is committed unchanged so that a later re-test
+  cannot be a re-tuning; the exporter runs the sensory→motor reachability test
+  every time and `data/roster.json` takes `seat` straight from it, so the fish
+  seats itself when a later materialization supports it. Secondary weaknesses,
+  recorded before any result: the four channels are unequal (346 / 35 / 48 / 5)
+  and there is **no visual channel** — the retina is annotated and contains no
+  somata.
 
 ## Mouse — MICrONS cubic millimetre
 

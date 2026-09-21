@@ -153,13 +153,23 @@ summarised in the package's `brain.json` for the page to show the viewer.
    were available and are **not** used; the document says why, so that a later
    run that swaps them is visibly a different mapping and not a tuning.
 4. **What would count as the mapping being bad.** The general bar above, plus
-   one specific to the fish: its four channels are 2,844 / 35 / 182 / 29
-   neurons, an artefact of which peripheral ganglia happen to be
-   soma-segmented. If reward drowns the other three, that is this mapping's
-   fault and is reported as such. **The channel sizes are not to be evened out
-   after a result is seen**, which is the whole point of writing them here
-   first. The fish also has **no visual channel at all**: the retina is
-   annotated and contains no somata.
+   one specific to the fish: its four channels are 346 / 35 / 48 / 5 neurons,
+   an artefact of which peripheral ganglia happen to be soma-segmented. If
+   reward drowns the other three, that is this mapping's fault and is reported
+   as such. **The channel sizes are not to be evened out after a result is
+   seen**, which is the whole point of writing them here first. The fish also
+   has **no visual channel at all**: the retina is annotated and contains no
+   somata.
+
+**And it does not get a seat yet, for a reason that is not the mapping.** At
+materialization 704 Fish1's axons are largely unproofread, so only about 0.8%
+of its 29,474,316 synapses have both endpoints on an identified soma, and no
+directed path runs from any sensory channel to any motor neuron. A seat that
+cannot be moved by any sense fails the first condition above before a turn is
+played. The exporter measures this every run and writes it to
+`provenance.usable_as_a_seat`; `data/roster.json` takes `seat` from it, so the
+fish seats itself automatically once the data supports it. The mapping above is
+committed now, unchanged, precisely so that the re-test cannot be a re-tuning.
 
 Its sign is not a convention: `synapses_axde_label` calls every one of the
 29,474,316 synapses inhibitory or excitatory, a cell takes the majority of its

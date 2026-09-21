@@ -465,8 +465,8 @@
       "name": "Zebrafish",
       "detail": "larva, 7 days post-fertilisation",
       "dataset": "Fish1",
-      "neurons": 187053,
-      "seat": null,
+      "neurons": 187052,
+      "seat": false,
       "station": true,
       "model": null,
       "status": "candidate",
@@ -476,12 +476,139 @@
         "dataset": "fish1_v250915",
         "server": "https://global.brain-wire-test.org/",
         "token": "personal, by hand, never committed",
-        "materialization": 574
+        "materialization": 704
       },
       "note": "vglut2a and gad1b labels give each cell a sign, which is what makes a LIF model possible at all",
-      "export": null,
+      "export": {
+        "dataset_version": "CAVE datastack fish1_full, materialization 704",
+        "datastack": "fish1_full",
+        "dataset": "fish1_v250915",
+        "server": "https://global.brain-wire-test.org",
+        "materialization": 704,
+        "exported": "2026-09-21",
+        "exporter": "tools/fish1_export.py",
+        "package": "web/species/zebrafish_larva",
+        "package_bytes": 1608268,
+        "sign_source": "synapses_axde_label, per synapse; one sign per cell by majority. Checked against somas.cell_type (confocal vglut2a/gad1b), which was not used to assign it.",
+        "sensory_motor": "CONVENTION, not an annotation: see docs/fish1-mapping.md and provenance.sensory / provenance.motor. Convention id: mece-ganglia-v1",
+        "licence": "Fish1 (fish1_v250915), Lichtman and Engert labs (Harvard) with Google Connectomics, via the CAVE datastack fish1_full at https://global.brain-wire-test.org, materialization 704. Access is by a personal token obtained by hand; the token is never read, printed or written by this exporter. The redistribution terms for Fish1 have not been established by this project -- data/roster.json records redistribute: null and redistribute_why, and this derived package is gitignored and not published until those terms are read.",
+        "counts": {
+          "somas_released": 187052,
+          "neurons": 178976,
+          "synapses_released": 29474316,
+          "synapses_both_ends_on_a_soma": 235703,
+          "ordered_pairs": 148724,
+          "dropped_unknown_sign": 10880,
+          "gap_junctions": 0,
+          "motor_neurons": 4254
+        },
+        "validation": {
+          "nodes": {
+            "somas_in_table": 187052,
+            "dropped_no_segment": 6001,
+            "dropped_root_shared_by_several_somas": 2075,
+            "shared_roots": 954,
+            "nodes": 178976,
+            "outside_every_mece_mask": {
+              "l0": 4796,
+              "l1": 30432,
+              "l2": 73661
+            },
+            "mece_level0": {
+              "Hindbrain": 74305,
+              "Midbrain": 51752,
+              "Forebrain": 41982,
+              "Spinal Cord": 5704,
+              "": 4796,
+              "Ganglia": 437
+            }
+          },
+          "synapses": {
+            "rows_fetched": 29474316,
+            "distinct_synapse_ids": 29474316,
+            "released": 29474316,
+            "both_endpoints_on_a_soma": 235703
+          },
+          "signs": {
+            "presynaptic_cells": 31072,
+            "excitatory": 12114,
+            "inhibitory": 16165,
+            "tie_unknown": 2793,
+            "cells_whose_synapses_disagree": 12488,
+            "disagreement_rate_over_presynaptic_cells": 0.401905
+          },
+          "edges": {
+            "dropped_unknown_sign": 10880,
+            "self_synapses_dropped": 94,
+            "pairs": 148724,
+            "pairs_clamped_to_int16": 0,
+            "largest_pair_count": 52
+          },
+          "sign_against_clem": {
+            "all_labelled_cells": {
+              "cells": 7890,
+              "agree": 4406,
+              "agreement": 0.5584
+            },
+            "with_10_or_more_synapses": {
+              "cells": 1098,
+              "agree": 970,
+              "agreement": 0.8834
+            },
+            "with_10_or_more_synapses_and_within_10um_of_a_landmark": {
+              "cells": 1012,
+              "agree": 890,
+              "agreement": 0.8794
+            },
+            "_note": "somas.cell_type is the confocal vglut2a (exc) / gad1b (inh) call. It is held back from the export and used only here. The landmark cut is the Fish1 preprint's own: cells 10 um or more from an EM-to-LM correspondence point are predominantly non-matches, so the label itself is unreliable there and a disagreement is not evidence against the synapse tags."
+          },
+          "reachability": {
+            "edges": 148724,
+            "neurons_with_an_outgoing_edge": 28275,
+            "neurons_with_an_incoming_edge": 54277,
+            "isolated_neurons": 111089,
+            "motor_neurons_with_an_incoming_edge": 2067,
+            "motor_neurons": 4254,
+            "channels": {
+              "chemosensory": {
+                "neurons": 346,
+                "with_an_outgoing_edge": 16,
+                "reaches": 347,
+                "hops": 1,
+                "motor_neurons_reached": 0
+              },
+              "trigeminal": {
+                "neurons": 35,
+                "with_an_outgoing_edge": 2,
+                "reaches": 37,
+                "hops": 1,
+                "motor_neurons_reached": 0
+              },
+              "octavolateralis": {
+                "neurons": 48,
+                "with_an_outgoing_edge": 3,
+                "reaches": 51,
+                "hops": 1,
+                "motor_neurons_reached": 0
+              },
+              "viscerosensory": {
+                "neurons": 5,
+                "with_an_outgoing_edge": 0,
+                "reaches": 5,
+                "hops": 0,
+                "motor_neurons_reached": 0
+              }
+            },
+            "any_channel_reaches_the_motor_set": false
+          }
+        },
+        "usable_as_a_seat": false,
+        "why_no_seat": "NOT USABLE AS A SEAT at materialization 704, and the reason is the DATA, not this mapping. Fish1's axons are largely unproofread: a presynaptic endpoint lands on a segment that carries a soma only about 2% of the time (a postsynaptic one, being near its dendrite, about 32%), so only 235703 of 29474316 synapses -- 0.80% -- have BOTH ends on an identified cell. Confirmed independently of this join: asked how many supervoxels they contain, segments carrying a soma hold 152-5,600 and the unmatched presynaptic segments hold 1-4, which is a few voxels of neurite; is_latest_roots() says all of them are current at this version, so they are not stale ids. 111089 of 178976 neurons are left with no edge at all. Worse, no directed path runs from any sensory channel to any of the 4254 motor neurons (chemosensory reaches 347 neurons in 1 hops, 0 motor; trigeminal reaches 37 neurons in 1 hops, 0 motor; octavolateralis reaches 51 neurons in 1 hops, 0 motor; viscerosensory reaches 5 neurons in 0 hops, 0 motor), so no sense can move this seat however long it is driven, and PREREGISTRATION.md's first failure condition -- a seat that never acts -- is guaranteed before a turn is played. The package is still written, because it is a faithful export of what this version contains and will become usable as the community proofreads the axons; data/roster.json records seat: false with this reason. Re-run against a later materialization to re-test."
+      },
       "redistribute": null,
-      "redistribute_why": "Fish1 terms not yet read; treat as not redistributable until they are"
+      "redistribute_why": "Fish1 terms not yet read; treat as not redistributable until they are",
+      "why_no_seat": "NOT USABLE AS A SEAT at materialization 704, and the reason is the DATA, not this mapping. Fish1's axons are largely unproofread: a presynaptic endpoint lands on a segment that carries a soma only about 2% of the time (a postsynaptic one, being near its dendrite, about 32%), so only 235703 of 29474316 synapses -- 0.80% -- have BOTH ends on an identified cell. Confirmed independently of this join: asked how many supervoxels they contain, segments carrying a soma hold 152-5,600 and the unmatched presynaptic segments hold 1-4, which is a few voxels of neurite; is_latest_roots() says all of them are current at this version, so they are not stale ids. 111089 of 178976 neurons are left with no edge at all. Worse, no directed path runs from any sensory channel to any of the 4254 motor neurons (chemosensory reaches 347 neurons in 1 hops, 0 motor; trigeminal reaches 37 neurons in 1 hops, 0 motor; octavolateralis reaches 51 neurons in 1 hops, 0 motor; viscerosensory reaches 5 neurons in 0 hops, 0 motor), so no sense can move this seat however long it is driven, and PREREGISTRATION.md's first failure condition -- a seat that never acts -- is guaranteed before a turn is played. The package is still written, because it is a faithful export of what this version contains and will become usable as the community proofreads the axons; data/roster.json records seat: false with this reason. Re-run against a later materialization to re-test.",
+      "blocker": "Fish1 v704: axons are unproofread, so only 0.80% of synapses have both ends on an identified cell and no sensory channel reaches the motor set. Re-test on a later materialization."
     },
     {
       "id": "mouse_v1",

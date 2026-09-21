@@ -38,10 +38,10 @@ obtained. [ROSTER.md](ROSTER.md) is the working document; this is the summary.
 | Roundworm, male | Cook et al. 2019 | 385 neurons + gap junctions | **Plays** (calibrated, k = 4) |
 | Sea squirt larva | Ryan et al. 2016 | 207 neurons + gap junctions | **Plays**, but never reached the calibration target |
 | Fruit fly, larva | Winding et al. 2023 | 2,952 neurons | Exported, **not seated**: 89% of its wiring has no sign |
-| Zebrafish larva, 7dpf | Fish1 | 187,053 somas | Waiting on an export, which needs a personal CAVE token |
+| Zebrafish larva, 7dpf | Fish1 | 187,052 somas | Exported, **not seated**: its axons are unproofread, so no sense reaches an order |
 | Mouse | MICrONS digital twin | 8,221 recorded neurons | **Watches** the world; cannot play |
 
-### The two honest problems
+### The three honest problems
 
 **The mouse cannot play.** MICrONS is 1.4 × 0.87 × 0.84 mm of primary visual
 cortex and three higher visual areas in a P87 mouse — 200,000 cells, 120,000
@@ -54,6 +54,18 @@ So the mouse gets the role it can actually have: it is **shown** the map and we
 display what its cortex does. That is a real thing the data supports — the
 functional half of MICrONS is exactly "these neurons, shown these images,
 responded like this" — and it is not the same activity as playing.
+
+**The zebrafish has a connectome and not yet a circuit.** Fish1 releases
+187,052 somata and 29.5 million synapses, and the synapses carry a per-synapse
+excitatory/inhibitory call, which is everything a LIF model needs. What it does
+not yet have is *axons attached to their cell bodies*: a presynaptic endpoint
+lands on a segment carrying an identified soma about 2% of the time, so only
+~0.8% of synapses have both ends on a cell, and no path runs from any sensory
+channel to any motor neuron. The fish is exported anyway — the mapping is
+written down in `docs/fish1-mapping.md` before any result, so that re-testing
+on a later materialization cannot become re-tuning — and `data/roster.json`
+takes its `seat` straight from the reachability test the exporter runs. It will
+seat itself when the community's proofreading catches up.
 
 **"Both sexes of fly" may not be two brains.** The female (FlyWire/FAFB) is a
 whole adult brain. The best-known male *Drosophila* volume is MANC, the male
@@ -89,6 +101,9 @@ tools/build_web_agent.sh ../OpenDoctrines     # web/agent: the game, patched for
 .venv/bin/python tools/export_male_fly.py     # MaleCNS v1.0, public bucket, ~150 MB
 .venv/bin/python tools/export_celegans.py     # WormWiring + Wang et al. 2024
 .venv/bin/python tools/export_ciona.py        # eLife 16962 source data
+~/fish1-venv/bin/python tools/fish1_regions.py   # Fish1: soma -> published MECE brain region
+~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention mece-ganglia-v1
+                                              # Fish1; needs a personal CAVE token, ~40 min
 node tools/calibrate.mjs --write              # the preregistered rule; no game is played
 python3 -m http.server 8102 --directory web
 ```
