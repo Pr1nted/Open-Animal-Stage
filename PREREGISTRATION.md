@@ -201,3 +201,29 @@ Its sign is not a convention: `synapses_axde_label` calls every one of the
 29,474,316 synapses inhibitory or excitatory, a cell takes the majority of its
 own, and the result is checked against the confocal vglut2a/gad1b call that was
 held back from the export.
+
+## The benchmark, written 2026-09-21 before it ran
+
+`tools/stage_bench.mjs` with `bench/plan-v1.json`. Every player takes the same
+seat on the same world seed, alone against the game's AI, for 120 turns: seats
+1914:FRA, 1914:GER, 1914:SWE and 1939:USA, seeds 7001 to 7005 (fresh: nothing
+on this stage was calibrated or looked at on them). Players: each of the seven
+animals that plays, each of them with its wiring shuffled (seed 783), *hold*
+(does nothing) and *random* (random legal moves up to the budget).
+
+**Score:** land share at the end minus at the start, in percentage points; a
+country wiped out ends on zero. **Comparisons are paired** on the same seat and
+seed, with 95% bootstrap intervals. A difference whose interval contains zero is
+reported as **no difference**, not as a ranking.
+
+**What each comparison is allowed to mean, decided now:**
+- *animal vs hold*: whether the mapping does anything useful at all.
+- *animal vs random*: whether it does better than chance.
+- *animal vs its shuffled wiring*: the one comparison about the brain. Better
+  means the real wiring matters for play; no difference is a null result about
+  the wiring, and is reported as one.
+- *animal vs animal*: a comparison of two mappings we wrote. It is shown, and
+  never described as one species being better at strategy than another.
+
+With 20 games per player the intervals will be wide; a result that does not
+survive them is not claimed.

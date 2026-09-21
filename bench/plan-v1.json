@@ -1,0 +1,35 @@
+{
+ "name": "v1, 2026-09-21",
+ "players": [
+  "drosophila_female",
+  "drosophila_female:shuffled",
+  "drosophila_male",
+  "drosophila_male:shuffled",
+  "drosophila_larva",
+  "drosophila_larva:shuffled",
+  "c_elegans_herm",
+  "c_elegans_herm:shuffled",
+  "c_elegans_male",
+  "c_elegans_male:shuffled",
+  "ciona_larva",
+  "ciona_larva:shuffled",
+  "zebrafish_larva",
+  "zebrafish_larva:shuffled",
+  "hold",
+  "random"
+ ],
+ "seats": [
+  "1914:FRA",
+  "1914:GER",
+  "1914:SWE",
+  "1939:USA"
+ ],
+ "seeds": [
+  7001,
+  7002,
+  7003,
+  7004,
+  7005
+ ],
+ "turns": 120
+}
