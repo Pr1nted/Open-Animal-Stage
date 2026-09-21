@@ -16,7 +16,7 @@ import { AnimalBrain } from "../web/brain.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const species = path.join(here, "..", "web", "species");
-const CALIBRATED = ["drosophila_larva", "c_elegans_herm", "c_elegans_male", "ciona_larva"];
+const CALIBRATED = ["drosophila_larva", "c_elegans_herm", "c_elegans_male", "ciona_larva", "zebrafish_larva"];
 const SEEDS = [1, 2, 3, 4, 5], HZ = 100, WINDOW = 200, W0 = 0.275, KMAX = 10, W_GAP = 1;
 const write = process.argv.includes("--write");
 

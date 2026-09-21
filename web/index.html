@@ -158,6 +158,8 @@
 <div class="loading" id="loading"><div><strong>Opening the room</strong><p id="loadText">Loading&hellip;</p></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script type="module">
 import { Encoder, choose, turnSeed, BRAIN_SEED, WINDOW_MS } from "./decide.js";
@@ -434,16 +436,103 @@ function makeLarva() {
   root.scale.setScalar(2.2);
   return { root, animate(t, drive) { segs.forEach((s, i) => { s.scale.z = 0.014 * (1 + (0.15 + drive * 0.4) * Math.sin(t * 5 - i * 0.6)); }); } };
 }
+// A tube whose centre line and radius are recomputed every frame: the worm's
+// whole body, the mouse's tail. `radius(u)` is the profile along the length,
+// u = 0 at the head. Rings are laid perpendicular to the path with "up" as
+// the other axis, which suits a body lying on a surface.
+function taperedTube(nSeg, nRad, radius, material, flatten = 1) {
+  const verts = (nSeg + 1) * nRad;
+  const pos = new Float32Array(verts * 3), idx = [];
+  for (let i = 0; i < nSeg; i++) for (let j = 0; j < nRad; j++) {
+    const a = i * nRad + j, b = i * nRad + (j + 1) % nRad, c = a + nRad, d = b + nRad;
+    idx.push(a, c, b, b, c, d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setIndex(idx);
+  const m = new THREE.Mesh(geo, material); m.castShadow = true; m.receiveShadow = true; m.frustumCulled = false;
+  const T = new THREE.Vector3(), S = new THREE.Vector3(), U = new THREE.Vector3(0, 1, 0);
+  // `at(u)` returns the centre line; the tube samples it nSeg + 1 times.
+  m.userData.update = (at) => {
+    const pts = []; for (let i = 0; i <= nSeg; i++) pts.push(at(i / nSeg));
+    for (let i = 0; i <= nSeg; i++) {
+      T.subVectors(pts[Math.min(nSeg, i + 1)], pts[Math.max(0, i - 1)]).normalize();
+      S.crossVectors(T, U).normalize();
+      const up = new THREE.Vector3().crossVectors(S, T).normalize();
+      const r = radius(i / nSeg);
+      for (let j = 0; j < nRad; j++) {
+        const th = (j / nRad) * Math.PI * 2, o = (i * nRad + j) * 3;
+        pos[o] = pts[i].x + r * (Math.cos(th) * S.x + Math.sin(th) * up.x * flatten);
+        pos[o + 1] = pts[i].y + r * (Math.cos(th) * S.y + Math.sin(th) * up.y * flatten);
+        pos[o + 2] = pts[i].z + r * (Math.cos(th) * S.z + Math.sin(th) * up.z * flatten);
+      }
+    }
+    geo.attributes.position.needsUpdate = true;
+    geo.computeVertexNormals();
+    geo.computeBoundingSphere();
+  };
+  return m;
+}
+
+// C. ELEGANS, as it looks under a dissecting microscope: a translucent body
+// about fifteen times as long as it is wide, a rounded head, and -- visible
+// through the cuticle -- the two-bulbed pharynx, the dark granular intestine
+// and, in the hermaphrodite, eggs in the uterus either side of the vulva. The
+// hermaphrodite's tail is a fine whip; the male's is blunt and ends in the
+// fan (bursa) it mates with. It crawls on a bacterial lawn in a travelling
+// sine wave, head first, and leaves tracks, as worms on a plate do.
 function makeWorm(male) {
-  const root = new THREE.Group(), balls = [];
-  const mat = std(0xe8e2d0, { roughness: 0.3, transparent: true, opacity: 0.85 });
-  for (let i = 0; i < 36; i++) { const r = 0.006 * Math.sin(Math.PI * (i + 1) / 37) + 0.0015; const b = ellipsoid(r, r, r, mat, 10); root.add(b); balls.push(b); }
-  if (male) { const fan = new THREE.Mesh(new THREE.CircleGeometry(0.008, 16), mat); fan.rotation.x = -Math.PI / 2; root.add(fan); balls.fan = fan; }
-  root.scale.setScalar(2.4);
+  const root = new THREE.Group();
+  const L = 0.26, R = 0.0085;
+  // Radius along the body: a rounded nose, a long even middle, then either a
+  // fine whip (hermaphrodite) or a blunt end under the fan (male).
+  const radius = (u) => {
+    const nose = Math.sqrt(Math.min(1, u / 0.05));
+    const tail = male ? (u > 0.9 ? 0.55 + 0.45 * (1 - (u - 0.9) / 0.1) : 1) : (u > 0.78 ? Math.pow(1 - (u - 0.78) / 0.22, 1.4) : 1);
+    const mid = male ? 0.88 : 1 + 0.08 * Math.exp(-((u - 0.5) ** 2) / 0.01);
+    return Math.max(0.0004, R * nose * tail * mid);
+  };
+  const cuticle = new THREE.MeshStandardMaterial({ color: 0xd9d6cc, roughness: 0.2, metalness: 0, transparent: true, opacity: 0.72, depthWrite: false });
+  const body = taperedTube(72, 14, radius, cuticle, 0.85);
+  const gut = taperedTube(48, 8, (u) => R * 0.45 * Math.sin(Math.PI * u) ** 0.4, std(0x4f4230, { roughness: 0.9 }), 0.85);
+  const pharynx = [0.045, 0.1].map((u, k) => ({ u, m: ellipsoid(R * (k ? 0.62 : 0.5), R * (k ? 0.58 : 0.46), R * (k ? 0.9 : 0.8), std(0xb8a58a, { roughness: 0.5 }), 12) }));
+  const isthmus = { u: 0.072, m: ellipsoid(R * 0.22, R * 0.22, R * 1.4, std(0xb8a58a), 8) };
+  const eggs = male ? [] : [0.36, 0.4, 0.44, 0.56, 0.6, 0.64].map((u) => ({ u, m: ellipsoid(R * 0.42, R * 0.36, R * 0.6, std(0xd9cfb0, { roughness: 0.6 }), 10) }));
+  const inner = [...pharynx, isthmus, ...eggs];
+  let fan = null;
+  if (male) {
+    fan = new THREE.Group();
+    const web = new THREE.Mesh(new THREE.CircleGeometry(R * 2.3, 20, -Math.PI * 0.55, Math.PI * 1.1), new THREE.MeshStandardMaterial({ color: 0xe9e4d6, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
+    web.rotation.x = -Math.PI / 2; fan.add(web);
+    for (let k = 0; k < 9; k++) {   // the nine rays that stiffen each side of the fan
+      const a = -Math.PI * 0.5 + (k / 8) * Math.PI;
+      const ray = mesh(new THREE.CylinderGeometry(R * 0.07, R * 0.07, R * 2.2, 4), std(0xcfc6ad), Math.sin(a) * R * 1.1, 0, Math.cos(a) * R * 1.1);
+      ray.rotation.set(Math.PI / 2, 0, -a); fan.add(ray);
+    }
+    root.add(fan);
+  }
+  inner.forEach((o) => root.add(o.m));
+  root.add(gut, body);
+  let travelled = 0, lastT = 0;
+  const P = new THREE.Vector3(), Q = new THREE.Vector3();
   return { root, animate(t, drive) {
-    const speed = 2 + drive * 6;
-    balls.forEach((b, i) => { const u = i / 35; b.position.set(0.035 * Math.sin(u * 5 - t * speed), 0.008, -0.07 + u * 0.14); });
-    if (balls.fan) balls.fan.position.copy(balls[35].position);
+    // Forward along a circle round the lawn, the body bent by a wave that
+    // travels from head to tail; the brain's activity speeds the crawl.
+    const dt = Math.min(0.1, t - lastT); lastT = t;
+    travelled += dt * (0.012 + drive * 0.03);
+    const Rc = 0.108, amp = 0.017, k = 2 * Math.PI * 1.5;
+    const at = (u) => {
+      const s = travelled - u * L, a = s / Rc;
+      const lat = amp * Math.sin(k * u - t * (3 + drive * 6)) * Math.min(1, u * 6);
+      return new THREE.Vector3(Math.cos(a) * (Rc + lat), R * 0.9, Math.sin(a) * (Rc + lat));
+    };
+    body.userData.update(at);
+    gut.userData.update((u) => at(0.13 + u * 0.72));
+    for (const o of inner) {
+      P.copy(at(o.u)); Q.copy(at(Math.min(1, o.u + 0.01)));
+      o.m.position.copy(P); o.m.lookAt(Q);
+    }
+    if (fan) { fan.position.copy(at(1)); fan.lookAt(at(0.97)); fan.rotateY(Math.PI); }
   } };
 }
 function makeCiona() {
@@ -477,21 +566,217 @@ function makeFish() {
     root.position.y = Math.sin(t * 0.8) * 0.01;
   } };
 }
+// A HOUSE MOUSE, sitting up in front of its screen, which is the posture in
+// which the MICrONS mouse watched its stimuli (head-fixed, on a treadmill --
+// the station gives it the desk instead). Agouti back, pale belly, ears half
+// the size of its head and lined pink, whiskers, and a tail as long as its
+// body lying out behind it. It sniffs and whisks all the time, and faster
+// when its cortex's predicted response to the map is high.
 function makeMouse() {
   const root = new THREE.Group();
-  const fur = std(0x8d8478, { roughness: 0.9 });
-  const body = ellipsoid(0.05, 0.042, 0.075, fur); body.position.set(0, 0.042, 0.02);
-  const head = ellipsoid(0.03, 0.03, 0.04, fur); head.position.set(0, 0.07, -0.06);
-  for (const s of [-1, 1]) {
-    const ear = ellipsoid(0.02, 0.022, 0.006, std(0xc9a7a0)); ear.position.set(s * 0.024, 0.1, -0.05); root.add(ear);
-    const eye = ellipsoid(0.006, 0.006, 0.006, std(0x050505, { roughness: 0.1 })); eye.position.set(s * 0.018, 0.078, -0.092); root.add(eye);
+  // Fur coloured by facing: darker along the back, pale underneath, per vertex.
+  const furred = (geo) => {
+    const n = geo.attributes.normal, c = new Float32Array(n.count * 3);
+    for (let i = 0; i < n.count; i++) {
+      // Agouti brown on top, grading to a pale belly. Read from the normal in
+      // the POSED geometry: a lathe's own "up" is its axis -- the spine --
+      // so colouring before the pose painted the mouse front-to-back.
+      const up = n.getY(i), w = Math.max(0, Math.min(1, 0.45 + up * 0.8));
+      c[i * 3] = 0.74 + (0.24 - 0.74) * w; c[i * 3 + 1] = 0.69 + (0.18 - 0.69) * w; c[i * 3 + 2] = 0.62 + (0.12 - 0.62) * w;
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(c, 3));
+    return geo;
+  };
+  const fur = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+  const skin = std(0xe3a6a0, { roughness: 0.6 });
+  // The pose goes into the geometry before the fur is coloured (see furred).
+  const lathe = (profile, tilt, seg = 28) => {
+    const g = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+    g.rotateX(tilt); g.computeVertexNormals();
+    return furred(g);
+  };
+  // Body: a pear, widest over the haunches, lathed about its own axis and laid
+  // along -z (towards the screen), tipped up at the front as a mouse sits.
+  const body = new THREE.Mesh(lathe([[0.001, 0], [0.03, 0.006], [0.046, 0.025], [0.05, 0.05], [0.045, 0.075], [0.036, 0.1], [0.028, 0.118], [0.02, 0.128]], -Math.PI / 2 + 0.45), fur);
+  body.position.set(0, 0.04, 0.06); body.castShadow = true;
+  const neck = new THREE.Group(); neck.position.set(0, 0.095, -0.03); root.add(neck);
+  // Head: a cone rounded at both ends, the snout pointing at the screen.
+  const head = new THREE.Mesh(lathe([[0.024, 0], [0.028, 0.012], [0.026, 0.028], [0.018, 0.045], [0.009, 0.058], [0.004, 0.064], [0.001, 0.066]], -Math.PI / 2 - 0.12), fur);
+  head.castShadow = true; neck.add(head);
+  const nose = ellipsoid(0.0055, 0.0045, 0.005, std(0xd98a86, { roughness: 0.4 })); nose.position.set(0, -0.006, -0.066); neck.add(nose);
+  const ears = [];
+  for (const sd of [-1, 1]) {
+    const eye = ellipsoid(0.0065, 0.0065, 0.006, std(0x050506, { roughness: 0.05, metalness: 0.2 }));
+    eye.position.set(sd * 0.0165, 0.012, -0.03); neck.add(eye);
+    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.0016, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    glint.position.set(sd * 0.0155, 0.0155, -0.0355); neck.add(glint);
+    const ear = new THREE.Group(); ear.position.set(sd * 0.02, 0.022, -0.008);
+    const outer = new THREE.Mesh(new THREE.CircleGeometry(0.019, 24), new THREE.MeshStandardMaterial({ color: 0x6e5a48, roughness: 0.95, side: THREE.DoubleSide }));
+    const lining = new THREE.Mesh(new THREE.CircleGeometry(0.015, 24), new THREE.MeshStandardMaterial({ color: 0xe8aca6, roughness: 0.7, side: THREE.DoubleSide }));
+    lining.position.z = -0.0012; outer.scale.set(1, 1.1, 1); lining.scale.set(1, 1.1, 1);
+    ear.add(outer, lining); ear.rotation.set(0.15, sd * 0.55, sd * 0.35); ear.position.y += 0.012;
+    neck.add(ear); ears.push({ ear, sd });
   }
-  const nose = ellipsoid(0.006, 0.005, 0.006, std(0xd79a95)); nose.position.set(0, 0.066, -0.1);
-  const tail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.02, 0.09), new THREE.Vector3(0.04, 0.005, 0.15), new THREE.Vector3(0.1, 0.004, 0.17), new THREE.Vector3(0.15, 0.004, 0.13)]), 24, 0.004, 6), std(0xc9a7a0));
-  root.add(body, head, nose, tail);
-  root.scale.setScalar(1.6);
-  return { root, animate(t) { head.rotation.x = Math.sin(t * 1.3) * 0.05; nose.position.y = 0.066 + Math.sin(t * 11) * 0.0015; } };
+  // Whiskers: six a side, fanning back from the snout.
+  const wpos = [];
+  for (const sd of [-1, 1]) for (let k = 0; k < 6; k++) {
+    const y = -0.004 + (k % 3) * 0.003, a = -0.35 + (k / 5) * 0.7, len = 0.045 + (k % 2) * 0.015;
+    wpos.push(sd * 0.006, y, -0.058, sd * (0.006 + Math.cos(a) * len), y + Math.sin(a) * len * 0.35, -0.058 + Math.sin(Math.abs(a)) * len * 0.5 + 0.01);
+  }
+  const whiskerGeo = new THREE.BufferGeometry(); whiskerGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(wpos), 3));
+  const whiskers = new THREE.LineSegments(whiskerGeo, new THREE.LineBasicMaterial({ color: 0xd8d2c8, transparent: true, opacity: 0.75 }));
+  const whiskerPivot = new THREE.Group(); whiskerPivot.add(whiskers); neck.add(whiskerPivot);
+  // Paws and haunches.
+  for (const sd of [-1, 1]) {
+    const fore = ellipsoid(0.006, 0.004, 0.009, skin); fore.position.set(sd * 0.014, 0.005, -0.012); root.add(fore);
+    const hind = ellipsoid(0.008, 0.004, 0.02, skin); hind.position.set(sd * 0.026, 0.004, 0.052); root.add(hind);
+    const hg = new THREE.SphereGeometry(0.02, 18, 14); hg.scale(0.75, 1, 1.2); hg.computeVertexNormals();
+    const haunch = new THREE.Mesh(furred(hg), fur); haunch.position.set(sd * 0.024, 0.028, 0.04); haunch.castShadow = true; root.add(haunch);
+  }
+  // Tail: as long as the body, tapering, lying out behind and curling a little.
+  const tail = taperedTube(40, 8, (u) => 0.0052 * (1 - u * 0.8), std(0xcf9f98, { roughness: 0.7 }));
+  root.add(body, tail);
+  root.scale.setScalar(1.25);
+  let sniff = 0, lastT = 0;
+  return { root, animate(t, drive) {
+    const dt = Math.min(0.1, t - lastT); lastT = t;
+    sniff += dt * (7 + drive * 7);                   // whisking, 7-14 Hz
+    whiskerPivot.rotation.y = Math.sin(sniff * 2 * Math.PI * 0.12) * 0.12;
+    whiskerPivot.rotation.x = Math.sin(sniff * 2 * Math.PI * 0.12 + 1) * 0.04;
+    nose.position.y = -0.006 + Math.sin(sniff * 2 * Math.PI * 0.12) * 0.0012;
+    neck.rotation.y = Math.sin(t * 0.35) * 0.18 + Math.sin(t * 1.3) * 0.04;
+    neck.rotation.x = Math.sin(t * 0.5) * 0.06;
+    body.scale.set(1 + Math.sin(t * 5.5) * 0.012, 1, 1 + Math.sin(t * 5.5) * 0.012);   // breathing
+    ears.forEach(({ ear, sd }, i) => { const flick = Math.max(0, Math.sin(t * 0.7 + i * 2.1)) ** 12; ear.rotation.y = sd * (0.55 + flick * 0.35); });
+    // From the base of the spine, down to the desk and out behind.
+    tail.userData.update((u) => new THREE.Vector3(
+      Math.sin(u * 2.4 + t * 0.6) * 0.02 * u + u * 0.07,
+      0.004 + Math.max(0, 0.12 - u) * 0.14,
+      0.062 + u * 0.16 - Math.sin(u * 3) * 0.03));
+  } };
 }
+// ---------------------------------------------------------------- modelled animals
+// web/models/<id>.glb, made in Blender by scene/*.py (docs/models.md is the
+// contract). Loaded once; each station gets its own clone -- SkeletonUtils,
+// because a plain clone of a skinned mesh shares one skeleton between two
+// animals and the second one would move the first. A species with no model
+// file keeps the generated placeholder below.
+const MODELS = new Map();
+async function loadModels(ids) {
+  const loader = new THREE.GLTFLoader();
+  await Promise.all(ids.map(async (id) => {
+    try {
+      const head = await fetch(`./models/${id}.glb`, { method: "HEAD" });
+      if (!head.ok || !(head.headers.get("content-type") || "").match(/gltf|octet|binary/)) return;
+      const gltf = await new Promise((res, rej) => loader.load(`./models/${id}.glb`, res, undefined, rej));
+      MODELS.set(id, gltf.scene);
+    } catch (e) { console.warn(`model ${id}:`, e.message || e); }
+  }));
+}
+// Bend a chain of bones in world terms whatever roll Blender gave them: the
+// axis each bone turns about is the world's up (or side) direction expressed in
+// that bone's own frame at rest, measured once at load.
+function chainOf(root, prefix) {
+  const out = [];
+  for (let i = 0; ; i++) { const b = root.getObjectByName(`${prefix}${i}`); if (!b) break; out.push(b); }
+  root.updateMatrixWorld(true);
+  const up = new THREE.Vector3(0, 1, 0), side = new THREE.Vector3(1, 0, 0), q = new THREE.Quaternion();
+  return out.map((b) => {
+    b.getWorldQuaternion(q); const inv = q.clone().invert();
+    return { b, rest: b.quaternion.clone(), yaw: up.clone().applyQuaternion(inv).normalize(), pitch: side.clone().applyQuaternion(inv).normalize() };
+  });
+}
+const tmpQ = new THREE.Quaternion();
+function bend(link, yaw, pitch = 0) {
+  link.b.quaternion.copy(link.rest);
+  if (yaw) link.b.quaternion.multiply(tmpQ.setFromAxisAngle(link.yaw, yaw));
+  if (pitch) link.b.quaternion.multiply(tmpQ.setFromAxisAngle(link.pitch, pitch));
+}
+function restOf(o) { return o ? { o, q: o.quaternion.clone(), p: o.position.clone() } : null; }
+function turn(r, x = 0, y = 0, z = 0) { if (!r) return; r.o.quaternion.copy(r.q).multiply(tmpQ.setFromEuler(new THREE.Euler(x, y, z))); }
+
+function modelled(id) {
+  const src = MODELS.get(id); if (!src) return null;
+  const model = THREE.SkeletonUtils.clone(src);
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+    // THE WORM'S SKIN, tuned for this room. Exported at 33% opacity it is
+    // right on Blender's grey backdrop and invisible on a plate under a desk
+    // lamp: the organs float with no body round them. Cloned first, so two
+    // worms do not share -- and double-apply -- one material.
+    if (o.material && o.material.name === "cuticle") {
+      o.material = o.material.clone();
+      o.material.opacity = 0.58; o.material.color.set(0xb4b1a4); o.material.roughness = 0.22;
+      o.renderOrder = 2;
+    }
+  });
+  const root = new THREE.Group(); root.add(model);
+  const N = (n) => restOf(model.getObjectByName(n));
+  let lastT = 0, travelled = 0, sniff = 0;
+  if (id.startsWith("drosophila_") && id !== "drosophila_larva") {
+    const head = N("head"), legs = [N("leg_front_L"), N("leg_front_R")], wings = [N("wing_L"), N("wing_R")];
+    return { root, animate(t, drive) {
+      legs.forEach((l, i) => turn(l, drive * 0.45 * Math.max(0, Math.sin(t * 14 + i * Math.PI))));
+      turn(head, 0, Math.sin(t * 0.7) * 0.1, 0);
+      wings.forEach((w, i) => turn(w, 0, 0, (i ? -1 : 1) * Math.max(0, Math.sin(t * 0.9)) ** 20 * 0.15));
+    } };
+  }
+  if (id === "drosophila_larva") {
+    const spine = chainOf(model, "spine_");
+    return { root, animate(t, drive) {
+      // Peristalsis: a contraction running tail to head, and the head sweeping.
+      spine.forEach((l, i) => bend(l, i < 3 ? Math.sin(t * 1.1) * 0.12 : 0, Math.sin(t * (3 + drive * 5) + i * 0.7) * 0.05));
+    } };
+  }
+  if (id.startsWith("c_elegans")) {
+    // Crawls round the lawn: a pivot at the dish centre carries it forward,
+    // the bones carry the wave from nose to tail.
+    const spine = chainOf(model, "spine_"), pivot = new THREE.Group();
+    root.remove(model); pivot.add(model); root.add(pivot);
+    model.position.set(0.105, 0, 0); model.rotation.y = 0;   // tangent to the circle, facing -Z
+    return { root, animate(t, drive) {
+      const dt = Math.min(0.1, t - lastT); lastT = t; travelled += dt * (0.1 + drive * 0.25);
+      pivot.rotation.y = travelled;
+      // The chain hangs from the nose, so bends add up towards the tail. With
+      // the raw sine the body's overall heading drifted and the worm swung
+      // off its plate; taking out the mean keeps the wave travelling along a
+      // body that goes where the worm is going.
+      const w = t * (3 + drive * 6);
+      const ang = spine.map((_, i) => 0.13 * Math.sin(i * 0.4 - w));
+      const mean = ang.reduce((a, b) => a + b, 0) / (ang.length || 1);
+      spine.forEach((l, i) => bend(l, ang[i] - mean));
+    } };
+  }
+  if (id === "ciona_larva") {
+    const tail = chainOf(model, "tail_");
+    return { root, animate(t, drive) { const f = 4 + drive * 10; tail.forEach((l, i) => bend(l, (0.05 + i * 0.012) * Math.sin(i * 0.5 - t * f))); } };
+  }
+  if (id === "zebrafish_larva") {
+    const spine = chainOf(model, "spine_"), eyes = [N("eye_L"), N("eye_R")];
+    return { root, animate(t, drive) {
+      const f = 5 + drive * 16, a = 0.03 + drive * 0.05;
+      spine.forEach((l, i) => bend(l, a * (0.3 + i / spine.length) * Math.sin(i * 0.55 - t * f)));
+      const sac = Math.round(Math.sin(t * 0.4) * 2) * 0.08;   // saccades: steps, not drift
+      eyes.forEach((e) => turn(e, 0, sac, 0));
+      root.position.y = Math.sin(t * 0.8) * 0.01;
+    } };
+  }
+  if (id === "mouse_v1") {
+    const head = N("head"), nose = N("nose"), wl = N("whiskers_L"), wr = N("whiskers_R"), el = N("ear_L"), er = N("ear_R"), tail = chainOf(model, "tail_");
+    return { root, animate(t, drive) {
+      const dt = Math.min(0.1, t - lastT); lastT = t; sniff += dt * (7 + drive * 7);
+      const whisk = Math.sin(sniff * 2 * Math.PI * 0.12);
+      turn(wl, 0, whisk * 0.18, 0); turn(wr, 0, -whisk * 0.18, 0);
+      if (nose) { nose.o.position.copy(nose.p); nose.o.position.y += whisk * 0.0012; }
+      turn(head, Math.sin(t * 0.5) * 0.06, Math.sin(t * 0.35) * 0.18 + Math.sin(t * 1.3) * 0.04, 0);
+      [el, er].forEach((e, i) => turn(e, 0, (i ? -1 : 1) * Math.max(0, Math.sin(t * 0.7 + i * 2.1)) ** 12 * 0.35, 0));
+      tail.forEach((l, i) => bend(l, Math.sin(t * 0.6 + i * 0.4) * 0.05));
+    } };
+  }
+  return { root, animate() {} };
+}
+
 const ANIMALS = { drosophila_female: () => makeFly(false), drosophila_male: () => makeFly(true), drosophila_larva: makeLarva, c_elegans_herm: () => makeWorm(false), c_elegans_male: () => makeWorm(true), ciona_larva: makeCiona, zebrafish_larva: makeFish, mouse_v1: makeMouse };
 const HOUSING = { drosophila_female: "keyboard", drosophila_male: "keyboard", drosophila_larva: "keyboard", c_elegans_herm: "dish", c_elegans_male: "dish", ciona_larva: "dish", zebrafish_larva: "tank", mouse_v1: "desk" };
 
@@ -584,7 +869,7 @@ function buildStation(seat, i, n) {
   const scv = document.createElement("canvas"); scv.width = 1280; scv.height = 720;
   const stex = new THREE.CanvasTexture(scv); stex.encoding = THREE.sRGBEncoding; stex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.45), new THREE.MeshBasicMaterial({ map: stex, toneMapped: false }));
-  const animal = ANIMALS[seat.species.id] ? ANIMALS[seat.species.id]() : makeFly(false);
+  const animal = modelled(seat.species.id) || (ANIMALS[seat.species.id] ? ANIMALS[seat.species.id]() : makeFly(false));
   const lamp = new THREE.PointLight(0xffb877, 0.9, 3, 2);
   if (housing === "tank") {
     // A tank with a screen on the glass, which is the fish's whole station.
@@ -607,8 +892,22 @@ function buildStation(seat, i, n) {
     } else if (housing === "dish") {
       const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.025, 48, 1, true), new THREE.MeshStandardMaterial({ color: 0xcfe6ea, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
       dish.position.set(0, deskTop + 0.0125, 0.05); g.add(dish);
-      g.add(mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.008, 48), std(0xd9c9a0, { roughness: 1, transparent: true, opacity: 0.9 }), 0, deskTop + 0.004, 0.05));
-      animal.root.position.set(0, deskTop + 0.008, 0.05);
+      const sea = seat.species.id === "ciona_larva";
+      if (sea) {
+        // Sea water in a glass dish: the tadpole swims, it does not crawl.
+        const water = new THREE.Mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.022, 48), new THREE.MeshStandardMaterial({ color: 0x2f6f82, roughness: 0.1, transparent: true, opacity: 0.35, depthWrite: false }));
+        water.position.set(0, deskTop + 0.011, 0.05); g.add(water);
+        g.add(mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.002, 48), std(0x1d3a44, { roughness: 0.6 }), 0, deskTop + 0.001, 0.05));
+      } else g.add(mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.008, 48), std(0x4a4436, { roughness: 0.95, transparent: true, opacity: 0.97 }), 0, deskTop + 0.004, 0.05));
+      animal.root.position.set(0, deskTop + (sea ? 0.004 : 0.008), 0.05);
+      if (seat.species.id.startsWith("c_elegans")) {
+        // A worm plate: a lawn of E. coli on the agar, and the tracks a worm
+        // leaves in it. The sea squirt's dish is sea water and gets neither.
+        const lawn = new THREE.Mesh(new THREE.CircleGeometry(0.125, 48), new THREE.MeshStandardMaterial({ color: 0x6e6448, roughness: 1, transparent: true, opacity: 0.75 }));
+        lawn.rotation.x = -Math.PI / 2; lawn.position.set(0, deskTop + 0.0092, 0.05); g.add(lawn);
+        const tracks = new THREE.Mesh(new THREE.RingGeometry(0.097, 0.113, 96), new THREE.MeshBasicMaterial({ color: 0x7d7052, transparent: true, opacity: 0.45 }));
+        tracks.rotation.x = -Math.PI / 2; tracks.position.set(0, deskTop + 0.0096, 0.05); g.add(tracks);
+      }
     } else {
       animal.root.position.set(0, deskTop, 0.12);
     }
@@ -644,14 +943,17 @@ function layoutViews(seats) {
   VIEWS = { wide: { pos: [0, 2.4 + width * 0.12, 2.6 + width * 0.8], look: [0, 1.3, -1.2] }, world: { pos: [0, 2.9, 1.9], look: [0, 3.2, -2.5] } };
   seats.forEach((s, i) => {
     const x = (i - (n - 1) / 2) * SPACING;
-    VIEWS[`seat${i}`] = HOUSING[s.species.id] === "tank"
-      ? { pos: [x + 0.55, 1.45, 1.15], look: [x - 0.05, 1.0, -0.1] }
+    // A worm is a quarter of a metre long on a plate; the camera comes down to
+    // the dish rather than showing a desk with a smudge on it.
+    const h = HOUSING[s.species.id];
+    VIEWS[`seat${i}`] = h === "tank" ? { pos: [x + 0.55, 1.45, 1.15], look: [x - 0.05, 1.0, -0.1] }
+      : h === "dish" ? { pos: [x + 0.2, 1.02, 0.36], look: [x, 0.765, 0.04] }
       : { pos: [x + 0.7, 1.55, 1.05], look: [x - 0.15, 0.95, -0.25] };
     VIEWS[`brain${i}`] = { pos: [x - 0.6, 1.55, 0.95], look: [x - 1.05, 1.3, 0.1] };
   });
   if (G.mouse) {
     const x = (seats.length - (n - 1) / 2) * SPACING;
-    VIEWS.mouse = { pos: [x + 0.7, 1.55, 1.05], look: [x - 0.15, 0.95, -0.25] };
+    VIEWS.mouse = { pos: [x + 0.42, 1.08, 0.62], look: [x - 0.02, 0.86, 0.1] };
     VIEWS.brainmouse = { pos: [x - 0.6, 1.55, 0.95], look: [x - 1.05, 1.3, 0.1] };
   }
   $("views").innerHTML = `<button type="button" data-view="wide">Everyone</button><button type="button" data-view="world">The world</button>` +
@@ -671,10 +973,10 @@ function layoutViews(seats) {
 // predicted response lights its neurons; nothing it does reaches the game.
 const MOUSE_COLOR = "#C9C3B6";
 let mouseWorker = null, mouseLoaded = null;
-function buildMouse(n) {
+function buildMouse(n, total) {
   const species = roster.find((s) => s.id === "mouse_v1");
   const m = { species, color: MOUSE_COLOR, title: "Mouse · visual cortex", subtitle: "watches the world; does not play", busy: false, looks: 0, state: "load" };
-  m.st = buildStation(m, n, n + 1); stations.push(m.st);
+  m.st = buildStation(m, n, total); stations.push(m.st);
   m.frame = document.createElement("canvas"); m.frame.width = 256; m.frame.height = 144;
   if (!mouseWorker) {
     mouseWorker = rpcWorker("./mouse-worker.js", true);
@@ -889,13 +1191,18 @@ async function newStage(choice) {
   });
   clearStations();
   G.seats = seats;
+  // ONE COUNT FOR THE WHOLE ROW. Seats were spaced for the seats alone while
+  // the mouse's station and every camera view were spaced for seats + mouse,
+  // so the mouse's desk sat half on the last seat's and each seat's camera
+  // looked 0.65 m to the side of its animal.
+  const withMouse = available.has("mouse_v1") && $("mouseOn").checked;
+  const total = seats.length + (withMouse ? 1 : 0);
   seats.forEach((s, i) => {
-    s.st = buildStation(s, i, seats.length); stations.push(s.st);
+    s.st = buildStation(s, i, total); stations.push(s.st);
     s.mapCanvas = document.createElement("canvas"); s.mapCanvas.width = MAPW; s.mapCanvas.height = MAPH;
     s.mapImage = s.mapCanvas.getContext("2d").createImageData(MAPW, MAPH);
   });
-  G.mouse = null;
-  if (available.has("mouse_v1") && $("mouseOn").checked) G.mouse = buildMouse(seats.length);
+  G.mouse = withMouse ? buildMouse(seats.length, total) : null;
   layoutViews(seats); goTo("wide", !G.meta);
   // Every brain loads in parallel, each in its own worker. A brain that fails
   // to load faults its seat; it does not take the stage with it.
@@ -1021,6 +1328,9 @@ function resize() {
 }
 addEventListener("resize", resize);
 resize();
+// ?debug hands the scene to the console, for checking camera views and
+// stations by measurement instead of by squinting at screenshots.
+if (new URLSearchParams(location.search).has("debug")) window.__stage = { camera, scene, G, views: () => VIEWS, goTo };
 const clock = new THREE.Clock();
 let lastMs = performance.now();
 function loop(nowMs) {
@@ -1062,12 +1372,21 @@ function loop(nowMs) {
 }
 
 (async () => {
+  // Opened as a file, the workers and the game module are refused by the
+  // browser and the page would sit on its loading screen forever. Say so.
+  if (location.protocol === "file:") {
+    $("loadText").className = "err";
+    $("loadText").textContent = "This page has to be served, not opened as a file. In a terminal: tools/serve.sh — then open http://localhost:8102";
+    return;
+  }
   try {
     const loadText = $("loadText");
     requestAnimationFrame(loop);
     loadText.textContent = "Reading the roster…";
     await readRoster();
     if (!playable().length) throw new Error("no species package is in ./species/. Run the exporters in tools/ first (see README).");
+    loadText.textContent = "Loading the animals…";
+    await loadModels(roster.map((s) => s.id));
     const presets = renderPresets();
     $("mouseRow").hidden = !available.has("mouse_v1");
     plan = presets.length ? presets[0][1].map((x) => ({ iso: "", shuffled: false, ...x })) : [{ species: playable()[0].id, iso: "", shuffled: false }];

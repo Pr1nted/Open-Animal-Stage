@@ -105,7 +105,7 @@ tools/build_web_agent.sh ../OpenDoctrines     # web/agent: the game, patched for
 ~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention mece-ganglia-v1
                                               # Fish1; needs a personal CAVE token, ~40 min
 node tools/calibrate.mjs --write              # the preregistered rule; no game is played
-python3 -m http.server 8102 --directory web
+tools/serve.sh                                # http://localhost:8102
 ```
 
 The checks:
