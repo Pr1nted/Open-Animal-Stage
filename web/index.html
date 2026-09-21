@@ -125,6 +125,8 @@
   <div class="seatrows" id="seatRows"></div>
   <button type="button" id="addSeat">Add an animal</button>
   <label>Map <select id="mapSelect"><option>Loading maps&hellip;</option></select></label>
+  <button type="button" id="importBtn">Import .odmap</button>
+  <input type="file" id="importFile" accept=".odmap" hidden>
   <label>Speed
     <select id="speedSelect">
       <option value="0">As fast as they think</option>
@@ -169,8 +171,11 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmt = new Intl.NumberFormat("en-US");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const TURNS = 120, MAX_SEATS = 6, SHUFFLE_SEED = 783;
-const SEAT_COLORS = ["#F2B84B", "#6FB7AE", "#E07A8F", "#A58BE0", "#A8D46F", "#6FA8E0"];
+// Room for every animal that can play and one more. It was 6, and when the
+// zebrafish became the seventh player "Everyone who can play" quietly dropped
+// it off the end -- a cap must not decide who "everyone" is.
+const TURNS = 120, MAX_SEATS = 8, SHUFFLE_SEED = 783;
+const SEAT_COLORS = ["#F2B84B", "#6FB7AE", "#E07A8F", "#A58BE0", "#A8D46F", "#6FA8E0", "#E0A06F", "#C9D6DF"];
 
 // ---------------------------------------------------------------- workers
 function rpcWorker(url, classic) {
@@ -946,7 +951,11 @@ function clearStations() {
 }
 function layoutViews(seats) {
   const n = seats.length + (G.mouse ? 1 : 0), width = Math.max(1, n) * SPACING;
-  VIEWS = { wide: { pos: [0, 2.4 + width * 0.12, 2.6 + width * 0.8], look: [0, 1.3, -1.2] }, world: { pos: [0, 2.9, 1.9], look: [0, 3.2, -2.5] } };
+  // The fog follows the room. Fixed at 9-22 m, a stage of eight put the wide
+  // camera 20 m back and the stations came out as dots in the dark.
+  const back = 2.6 + width * 0.8;
+  scene.fog.near = Math.max(9, back * 0.8); scene.fog.far = Math.max(22, back + 12);
+  VIEWS = { wide: { pos: [0, 2.4 + width * 0.12, back], look: [0, 1.3, -1.2] }, world: { pos: [0, 2.9, 1.9], look: [0, 3.2, -2.5] } };
   seats.forEach((s, i) => {
     const x = (i - (n - 1) / 2) * SPACING;
     // A worm is a quarter of a metre long on a plate; the camera comes down to
@@ -1169,7 +1178,8 @@ function renderPresets() {
   for (const s of playable()) { P.push([`${shortLabel(s)} vs its shuffled self`, [{ species: s.id }, { species: s.id, shuffled: true }]]); break; }
   if (has("c_elegans_herm") && has("ciona_larva")) P.push(["Worm vs sea squirt", [{ species: "c_elegans_herm" }, { species: "ciona_larva" }]]);
   const actors = playable().filter((s) => !isWatcher(s));
-  if (actors.length > 2) P.push(["Everyone who can play", actors.slice(0, MAX_SEATS).map((s) => ({ species: s.id }))]);
+  if (actors.length > MAX_SEATS) console.warn(`${actors.length} animals can play but a stage seats ${MAX_SEATS}: "Everyone" leaves some out`);
+  if (actors.length > 2) P.push([actors.length > MAX_SEATS ? `The first ${MAX_SEATS} who can play` : "Everyone who can play", actors.slice(0, MAX_SEATS).map((s) => ({ species: s.id }))]);
   // The fish in its tank: against the fly when it can play, beside it as a
   // watcher when a later export finds its senses cut off again.
   const fish = playable().find((s) => s.id === "zebrafish_larva");
@@ -1179,7 +1189,50 @@ function renderPresets() {
   return P;
 }
 $("addSeat").addEventListener("click", () => { const opts = playable(); plan.push({ species: opts[plan.length % opts.length].id, iso: "", shuffled: false }); renderSeatRows(); });
-mapSelect.addEventListener("change", async () => { G.mapInfo = await loadMap(mapSelect.value); renderSeatRows(); });
+// A map changes which countries exist, so a country picked on the last map is
+// dropped rather than carried over to a map that may not have it.
+async function useMap(path) {
+  mapSelect.value = path;
+  G.mapInfo = await loadMap(path);
+  const here = new Set(G.mapInfo.seats.map((c) => c.iso));
+  for (const p of plan) if (p.iso && !here.has(p.iso)) p.iso = "";
+  renderSeatRows();
+}
+mapSelect.addEventListener("change", () => useMap(mapSelect.value).catch((e) => setupSay(`That map could not be read: ${e.message || e}`, true)));
+const setupSay = (text, warn) => { $("setupNote").className = warn ? "note warn" : "note"; $("setupNote").textContent = text; };
+
+// ── YOUR OWN MAP ──
+// An .odmap from the map editor (or anywhere) goes into the game module's own
+// filesystem and is played by path, exactly as Open Fly imports one. It lives
+// for this visit: a reload forgets it. Checked by reading it the way a stage
+// will, so a file that is not a map fails here, with the reason, and not
+// halfway through seating the animals.
+async function importMap(file) {
+  if (!/\.odmap$/i.test(file.name)) { setupSay(`${file.name} is not an .odmap file.`, true); return; }
+  setupSay(`Importing ${file.name}…`);
+  // A failed import leaves the menu as it was: the map that was picked stays
+  // picked, and the file that failed is not offered again.
+  const before = mapSelect.value;
+  const fillMaps = () => { mapSelect.innerHTML = maps.map((m) => `<option value="${esc(m.path)}">${esc(prettyMap(m))}</option>`).join(""); };
+  let r = null;
+  try {
+    const bytes = await file.arrayBuffer();
+    r = await game.call("import", { name: file.name, bytes }, [bytes]);
+    maps = r.maps;
+    fillMaps(); mapSelect.value = before;
+    const info = await loadMap(r.path);
+    if (!info.seats.length) throw new Error("it has no countries with provinces");
+    await useMap(r.path);
+    setupSay(`Imported ${file.name}: ${info.seats.length} countries. Pick the animals' countries, or leave them random, and start. It is kept for this visit only.`);
+  } catch (e) {
+    if (r && r.path) { maps = maps.filter((m) => m.path !== r.path); mapCache.delete(r.path); fillMaps(); mapSelect.value = before; }
+    setupSay(`Could not use ${file.name}: ${e.message || e}. An .odmap is a zip with countries.json, provinces.json and provinces.png.`, true);
+  }
+}
+$("importBtn").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) importMap(f); e.target.value = ""; });
+addEventListener("dragover", (e) => { if ([...e.dataTransfer.items].some((i) => i.kind === "file")) e.preventDefault(); });
+addEventListener("drop", (e) => { const f = [...e.dataTransfer.files].find((x) => /\.odmap$/i.test(x.name)); if (f) { e.preventDefault(); importMap(f); } });
 $("startBtn").addEventListener("click", () => {
   const isos = plan.map((p) => p.iso).filter(Boolean);
   if (new Set(isos).size !== isos.length) { $("setupNote").className = "note warn"; $("setupNote").textContent = "Two animals on one country is a race, not a game: the game would take whichever orders came last. Pick different countries."; return; }

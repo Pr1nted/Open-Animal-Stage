@@ -20,6 +20,9 @@ through its agent session, and nothing about any of it learned to play.
   seat in the same world.
 - **Put several in at once.** The game already runs many countries; a stage with
   four animals in it is four seats driven by four brains.
+- **Play on your own map.** "Import .odmap" (or drop the file on the page)
+  loads any map made in Open Doctrines' editor, and every animal plays on it
+  exactly as on the built-in ones. It is kept for that visit only.
 - **Show the mouse looking.** The mouse is not a player — see below — and the
   honest thing to do with it is show what its visual cortex does when it is shown
   the map.
