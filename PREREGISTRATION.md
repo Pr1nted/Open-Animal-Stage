@@ -108,6 +108,27 @@ transmitter for 2,606 unannotated cells claims more about the animal than
 leaving unmeasured connections out. 88% of the larva's connections are dropped
 as unsigned, and that is a fact about this seat, not a detail.
 
+**Zebrafish, senses: four brain nuclei (`brain-nuclei-v1`), adopted
+2026-09-21, before any game.** It **replaces** the peripheral-ganglia
+convention `mece-ganglia-v1` below; it does not extend it. Fish1's peripheral
+sensory cells have almost no traced synapses (the 346 olfactory, 35
+trigeminal, 48 lateral-line and 5 vagal ganglion cells send 88 synapses
+between them at v704), so no peripheral sense reaches a motor neuron. The
+rule: **the four first-order sensory nuclei the atlas names that have a path
+to the motor set at v704, one per game signal.** The olfactory bulb and the
+area postrema were tested and reach none; the atlas names no trigeminal
+sensory nucleus. `Pretectum` = reward, `Tectum/Stratum Periventriculare` =
+threat, `Medial Vestibular Nucleus` (r5 and r6 parts) = harm, `Tangential
+Vestibular Nucleus` (r5 and r6 parts) = reserve. **Which nucleus carries which
+signal is our pairing, not biology.** These are second-order neurons, and the
+fish now sees, which it could not before. It was chosen on reachability — the
+directed path from each channel to the motor set in the proofread v704 wiring
+— and not on any game result; the motor set, the wiring and the sign rule are
+unchanged. The page shows it as a warning beside the fish. The automated
+agglomeration `seg_241003_agg241003` was also tried as a wiring source and
+gave no path from any peripheral sense either (docs/fish1-mapping.md), so the
+wiring stays the proofread one.
+
 ## What would count as a mapping being bad, written before the first game
 
 - **A seat that never acts.** Holding every module on 90% or more of its turns
@@ -161,7 +182,12 @@ summarised in the package's `brain.json` for the page to show the viewer.
    has **no visual channel at all**: the retina is annotated and contains no
    somata.
 
-**And it does not get a seat yet, for a reason that is not the mapping.** At
+**Superseded 2026-09-21 for the senses**: see `brain-nuclei-v1` under
+"Conventions adopted". Item 1 above is the original, peripheral-ganglia
+convention, kept as written; the reachability finding below is why it was
+replaced.
+
+**And it did not get a seat under it, for a reason that is not the mapping.** At
 materialization 704 Fish1's axons are largely unproofread, so only about 0.8%
 of its 29,474,316 synapses have both endpoints on an identified soma, and no
 directed path runs from any sensory channel to any motor neuron. A seat that

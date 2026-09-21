@@ -244,11 +244,16 @@ inputs and outputs is worth an afternoon before we write ours.
   annotation, only regions.
 - **No gap junctions** are released. `ngap` is 0 and `w_gap` stays 0. Electrical
   coupling is real in this animal; its absence here is a gap in the data.
-- **The bulk bucket does not substitute for CAVE.** `gs://fish1-public` is
-  world-readable and holds the same synapses as neuroglancer sharded
-  annotations (1.8 GB), but its cell ids are flat `seg_241003_agg241003`
-  segment ids, a different id space from the ChunkedGraph root ids at any
-  materialization, with no published crosswalk.
+- **The bulk bucket does not rescue it either (measured 2026-09-21).**
+  `gs://fish1-public` holds the same 29,474,316 synapses as neuroglancer
+  sharded annotations (1.8 GB, same e/i call), keyed by the automated
+  agglomeration `seg_241003_agg241003`. `tools/fish1_agglomeration.py` joins it
+  to the somata by sampling the agglomeration at each centroid, and
+  `tools/fish1_export.py --wiring agglomeration-241003` builds from it: 1.60% of
+  presynaptic endpoints on a soma (v704 1.83%), 0.72% both ends (v704 0.80%),
+  no sense reaches a motor neuron. It is the segmentation the ChunkedGraph was
+  seeded from; the axons are fragmented in both. The package stays on
+  `--wiring proofread-v704`. Numbers in docs/fish1-mapping.md.
 - **Model** Open Fly's LIF (Shiu et al. 2024) over Fish1, uncalibrated at
   export; `tools/calibrate.mjs` sets `w_syn` by the preregistered rule. There
   is no published Fish1 model, so the neuron is a stated simplification.
@@ -264,9 +269,21 @@ inputs and outputs is worth an afternoon before we write ours.
   **no directed path runs from any sensory channel to any motor neuron**, so no
   sense can move the seat. This is a fact about how much of the volume has been
   proofread, not about the mapping or the animal.
-- **Status** **Exported, not seated.** `tools/fish1_regions.py` then
-  `tools/fish1_export.py --sensory-convention mece-ganglia-v1` →
-  `web/species/zebrafish_larva/`. The mapping is preregistered in
+- **Senses moved into the brain (2026-09-21).** Since no peripheral sense
+  reaches a motor neuron, the fish senses through four brain nuclei:
+  `brain-nuclei-v1` — pretectum = reward, tectum (periventricular layer) =
+  threat, medial vestibular nucleus = harm, tangential vestibular nucleus =
+  reserve. The rule is "the four first-order sensory nuclei the atlas names
+  that have a path to the motor set at v704, one per signal"; the pairing of
+  nucleus to signal is ours. It replaces the ganglia convention, is recorded in
+  PREREGISTRATION.md, and is shown to the viewer as a warning. On the proofread
+  v704 wiring every channel reaches the motor set: 1,600 / 1,582 / 1,572 /
+  1,576 of 4,254 motor-nucleus somata.
+- **Status** **Plays** (calibrated k = 4, w_syn = 4.4; ladder 0% 0% 2% 23%
+  83% against the fly's 74.4%). `tools/fish1_regions.py` then
+  `tools/fish1_export.py --sensory-convention brain-nuclei-v1` →
+  `web/species/zebrafish_larva/`. What follows is the history of the original
+  peripheral-ganglia convention, kept because it is why the senses moved. The mapping is preregistered in
   `docs/fish1-mapping.md` and is committed unchanged so that a later re-test
   cannot be a re-tuning; the exporter runs the sensory→motor reachability test
   every time and `data/roster.json` takes `seat` straight from it, so the fish

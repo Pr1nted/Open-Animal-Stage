@@ -10,19 +10,17 @@ grouping into four channels, and which channel carries which game signal are
 ours, and are conventions.** This document separates those three things line by
 line, because the seat test in `ROSTER.md` turns on exactly that distinction.
 
-> ## The fish does not get a seat, and the mapping is not why
+> ## The senses were moved into the brain on 2026-09-21
 >
-> At materialization 704 **no directed path runs from any sensory channel to
-> any motor neuron**, so no sense can move this seat however long it is driven.
-> The cause is the state of the data, not this document: Fish1's *axons are
-> largely unproofread*, so a presynaptic endpoint lands on a segment carrying
-> an identified soma only about 2% of the time. See
-> [The wiring is not there yet](#the-wiring-is-not-there-yet) for the numbers.
->
-> The mapping below is written out in full anyway, unchanged and before any
-> result was seen, because it is the mapping that will be used when the axons
-> are proofread — and because a mapping written *after* a re-test would be
-> worth nothing.
+> The peripheral-ganglia convention below (`mece-ganglia-v1`) could not seat
+> the fish: at materialization 704 no directed path runs from any sensory
+> ganglion to any motor neuron, because the ganglion cells' axons are not
+> attached to their somata (see [The wiring is not there
+> yet](#the-wiring-is-not-there-yet)). It is **replaced** — not extended — by
+> `brain-nuclei-v1`, described in
+> [Convention 3](#convention-3-brain-nuclei-v1-the-senses-in-the-brain-ours),
+> which the fish now plays with. The ganglia sections are kept as written,
+> because they are the record of why the change was made.
 
 ## What Fish1 annotates, and what it does not
 
@@ -165,6 +163,48 @@ after-the-fact adjustment `PREREGISTRATION.md` exists to forbid, and it would
 be indistinguishable from tuning once a result is in.
 
 It is, in the end, not what stops the fish. That is the next section.
+
+## Convention 3: brain-nuclei-v1, the senses in the brain (ours)
+
+Adopted 2026-09-21, **before any game**, on reachability alone, and recorded in
+`PREREGISTRATION.md` under "Conventions adopted". It replaces the channel
+table above.
+
+**The rule:** the four first-order sensory nuclei the atlas names that have a
+path to the motor set at v704, one per game signal. The olfactory bulb (3,223
+somata) and the area postrema (133) were tested and reach no motor neuron;
+the atlas names no trigeminal sensory nucleus. Where the atlas splits a
+nucleus across rhombomeres, both parts are the nucleus.
+
+| channel | MECE level-2 regions (verbatim) | somata | game signal | motor somata reached (of 4,254) |
+|---|---|---|---|---|
+| `pretectum` | `Forebrain/Diencephalon/Pretectum` | 5,637 | **reward** | 1,600 (18 hops) |
+| `tectum` | `Midbrain/Tectum/Stratum Periventriculare` | 42,818 | **threat** | 1,582 (18 hops) |
+| `medial_vestibular` | `Hindbrain/Rhombomere 5/Medial Vestibular Nucleus`, `Hindbrain/Rhombomere 6/Medial Vestibular Nucleus 1` | 158 | **harm** | 1,572 (21 hops) |
+| `tangential_vestibular` | `Hindbrain/Rhombomere 5/Tangential Vestibular Nucleus`, `Hindbrain/Rhombomere 6/Tangential Vestibular Nucleus1` | 116 | **reserve** | 1,576 (21 hops) |
+
+**Which nucleus carries which signal is our pairing, not biology.** The
+reasons we give are analogies: the pretectum drives prey capture (approach),
+so it carries reward; looming-evoked escape is tectal, so the tectum carries
+threat; there is no nociceptive nucleus to carry harm, so a vestibular one
+does, with no biological claim behind it; the tangential nucleus (gravity,
+balance — a slow bodily state) carries the slow reserve signal.
+
+What this changes, stated plainly:
+
+- The fish senses through **second-order neurons**, one synapse after a
+  receptor would, and it now has **vision**, which the ganglia convention
+  lacked.
+- The channels are very unequal (5,637 / 42,818 / 158 / 116), and the tectum
+  is a quarter of the brain's somata. Left as it is, like the old channel
+  sizes; not to be evened out after a result.
+- No neuron is in two channels (the exporter refuses a package where one
+  is). That also resolves an inconsistency in the old convention's code,
+  which put the 5 vagal ganglion cells in both `chemosensory` and
+  `viscerosensory`.
+- Wiring (proofread v704), motor set, sign rule and neuron model are
+  unchanged. Calibrated by the preregistered rule: k = 4, w_syn = 4.4
+  (ladder 0%, 0%, 2%, 23%, 83% against the fly's 74.4%).
 
 ## The motor set: source annotation, mechanical rule
 
@@ -348,6 +388,62 @@ reachability test every time and writes `provenance.usable_as_a_seat` into
 community's proofreading attaches enough axons to their somata, the same
 command produces a seatable fish with no edits to this document. Re-testing on
 a later materialization is the entire remedy.
+
+### The automated agglomeration does not rescue it (measured 2026-09-21)
+
+`gs://fish1-public` also releases the same synapses in bulk
+(`syn_241003_agg241003_reorient_axde_ei.precomputed`), keyed by the public
+automated agglomeration `seg_241003_agg241003`. The hope was that an automated
+agglomeration merges axon fragments more aggressively than proofreading has
+reached. `tools/fish1_agglomeration.py` reads it anonymously and
+`tools/fish1_export.py --wiring agglomeration-241003` builds the fish from it,
+changing only the edges. The agglomeration is **not proofread** -- merge errors
+add false connections and split errors remove true ones -- and it does not
+matter here, because it fails the same way:
+
+| | proofread v704 | agglomeration 241003 |
+|---|---|---|
+| synapses | 29,474,316 | 29,474,316 (same set; `type` 1 on exactly CAVE's 15,883,209 inhibitory) |
+| somas on no segment | 6,001 | 5,985 |
+| segments carrying 2+ somas (dropped) | 954 (2,075 somas, largest 19) | 863 (1,927 somas, largest 65) |
+| nodes | 178,976 | 179,140 |
+| presynaptic endpoint on a soma | 1.83% | 1.60% |
+| postsynaptic endpoint on a soma | 32.04% | 32.50% |
+| **both ends** | **0.80%** | **0.72%** |
+| neurons with no edge | 111,089 | 111,947 |
+| channel reach (chemo / trig / octavolat / visc), motor reached | 347 / 37 / 51 / 5, 0 | 347 / 37 / 51 / 5, 0 |
+| sign vs confocal (>= 10 syn, near a landmark) | 87.9% of 1,012 | 88.6% of 965 |
+
+The soma join was checked (the zero set matches v704's `pt_root_id` 0 set
+exactly; mip 3 and mip 4 agree with mip 0 on 99.8%), and the bulk ids were
+checked against the volume (the stored pre/post id is found at the synapse's
+own endpoint on 33/39 and 37/39 sampled synapses). The agglomeration is simply
+the segmentation the ChunkedGraph was seeded from: its presynaptic side is 7.19
+million segments, median 2 synapses each. So the package stays on the
+proofread wiring, and the fish stays unseated.
+
+### Where the break actually is
+
+Not in the brain. At v704, **7,227 neurons do have a directed path to the
+motor set** (up to 19 hops), and a core of ~31,000 neurons reaches 1,572-1,600
+of the 4,254 motor-nucleus somata. What is missing is the first hop: **the
+sensory ganglion cells' segments carry almost no synapses at all** -- all 346
+olfactory-epithelium cells together are presynaptic to 82 synapses, the 35
+trigeminal cells to 2, the 48 lateral-line cells to 3, the vagal cells to 1.
+Their central axons are not attached to their somata in either segmentation.
+
+That points at the one route that would let the fish act on proofread wiring:
+a sensory convention built on the **first CNS sensory nuclei** the atlas names,
+rather than the peripheral ganglia. From each, at v704: `Medial Vestibular
+Nucleus` (104 somata) reaches 1,572 motor somata, `Tangential Vestibular
+Nucleus` (86) 1,576, `Spinal Backfill Vestibular Population` (27) 1,573,
+`Pretectum` (5,637) 1,600, `Tectum/Stratum Periventriculare` (42,818) 1,582 --
+while `Olfactory Bulb` (3,223), `Area Postrema` (133) and `Tangential
+Vestibular Nucleus1` (30) reach none, and the atlas names no trigeminal sensory
+nucleus. That is a **different mapping** (secondary sensory neurons, and it
+would give the fish vision), so it is not adopted here: it has to be written
+into PREREGISTRATION.md as a new convention id before the fish plays, not
+chosen because these numbers came out.
 
 ## What would count as this mapping being bad
 

@@ -43,14 +43,17 @@ EXPECT = {
                         # Fish1 v704: 187,052 somas, of which 6,001 have no
                         # segment and 2,075 share a root id with another soma.
                         "n": 178976,
-                        "channels": {"chemosensory", "trigeminal",
-                                     "octavolateralis", "viscerosensory"},
+                        # brain-nuclei-v1 (PREREGISTRATION.md, Conventions
+                        # adopted): four first-order brain nuclei, because the
+                        # peripheral ganglia have almost no traced synapses.
+                        "channels": {"pretectum", "tectum", "medial_vestibular",
+                                     "tangential_vestibular"},
                         # The sets are the source's own MECE regions, but the
                         # join, the grouping and the signal assignment are
                         # ours. docs/fish1-mapping.md is normative and the
                         # package must carry the same statement, marked, or
                         # the page cannot warn the viewer.
-                        "convention": "mece-ganglia-v1"},
+                        "convention": "brain-nuclei-v1"},
 }
 
 checks = fails = skips = 0

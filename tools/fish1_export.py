@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Export the Fish1 larval zebrafish connectome as a species package.
 
-    ~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention mece-ganglia-v1
-    ~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention mece-ganglia-v1 --no-fetch
+    ~/fish1-venv/bin/python tools/fish1_agglomeration.py all    # anonymous, ~2 GB
+    ~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention mece-ganglia-v1 \
+        --wiring agglomeration-241003
+    ~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention mece-ganglia-v1 \
+        --wiring proofread-v704 [--no-fetch]
+
+--wiring says where the EDGES come from, and nothing else: the nodes (somata,
+by lore id), their regions, the sensory channels, the motor set, the sign rule
+and the confocal check are the same under both. See "TWO WIRINGS" below.
 
 Raw pages cached (and gitignored) under data/raw/fish1/; package out in
 web/species/zebrafish_larva/; the `export` block of zebrafish_larva in
@@ -26,7 +33,25 @@ reproducible against a stated materialization version. Nodes are keyed by lore
 id; root ids appear nowhere in the package except as the stated basis of the
 join, and the version is recorded beside them.
 
-WHERE THE BULK DATA IS NOT
+TWO WIRINGS
+
+  proofread-v704         the CAVE ChunkedGraph at materialization 704. What the
+                         community has proofread. Its axons are mostly not, so
+                         only 0.80% of synapses have both ends on a soma and no
+                         sense reaches a motor neuron: it cannot seat.
+  agglomeration-241003   the public AUTOMATED agglomeration seg_241003_agg241003
+                         and the bulk synapses keyed by it, read anonymously by
+                         tools/fish1_agglomeration.py. NOT PROOFREAD: merge
+                         errors add false connections and split errors remove
+                         true ones. Measured 2026-09-21 and it does NOT rescue
+                         the fish: it is the segmentation the ChunkedGraph was
+                         seeded from, and its axons are just as fragmented
+                         (presynaptic endpoint on a soma 1.60% vs 1.83% at
+                         v704, both ends 0.72% vs 0.80%, no sense reaches a
+                         motor neuron). Kept as an option so the result can be
+                         re-measured; see docs/fish1-mapping.md.
+
+WHY THE BULK DATA WAS NOT USED AT FIRST (proofread-v704)
 
 gs://fish1-public is world-readable without a token and does hold the synapses
 in bulk, as neuroglancer sharded annotations under
@@ -118,6 +143,20 @@ GLOBAL_URL = "https://global.brain-wire-test.org"
 # 686, 698, 700, 702, 703, 704.
 DEFAULT_MATERIALIZATION = 704
 
+# Where the edges come from. Written up in the module docstring and in
+# docs/fish1-mapping.md ("Two wirings"). Nothing but the edges differs.
+WIRINGS = ("proofread-v704", "agglomeration-241003")
+AGG = os.path.join(RAW, "agg241003")
+AGG_STATEMENT = (
+    "AUTOMATED AGGLOMERATION, NOT PROOFREAD: merge errors add false "
+    "connections and split errors remove true ones.")
+# The bulk layer's uint32 `type` property -> the CAVE label's tag (1 inhibitory,
+# 2 excitatory). The CAVE label table's source is
+# engert-goog-connectomics.fish1_241003.synapses_20241004_reorient_axde_only_
+# mece_skel_ei, the same 241003 synapse set, and it uses the same two values;
+# the mapping is checked, not assumed, by the confocal cross-check below.
+AGG_TYPE_TO_TAG = {1: 1, 2: 2}
+
 # The server returns intermittent 503s under load; every call goes through
 # retry(). Observed: a table recovering after four tries of 20s or more.
 SYN_COLS = ["target_id", "tag", "pre_pt_root_id", "post_pt_root_id"]
@@ -172,6 +211,13 @@ CONVENTIONS = {
         "sensory": "MECE level-1 Ganglia classes + level-0 Retina, by modality",
         "motor": "MECE level-2 labels containing 'motor'",
     },
+    # REPLACES mece-ganglia-v1 (does not extend it). Adopted 2026-09-21 on
+    # reachability alone, before any game: see PREREGISTRATION.md
+    # ("Conventions adopted") and docs/fish1-mapping.md.
+    "brain-nuclei-v1": {
+        "sensory": "four first-order sensory nuclei in the brain (MECE level 2)",
+        "motor": "MECE level-2 labels containing 'motor'",
+    },
 }
 
 # Verbatim mece1_231218 / mece0_231218 labels. Every peripheral sensory
@@ -211,6 +257,44 @@ SENSORY = [
      "larva's viscerosensory afferents: internal bodily state, which is the "
      "closest thing the annotation offers to a homeostatic sense."),
 ]
+
+# brain-nuclei-v1. Fish1's peripheral sensory cells have almost no traced
+# synapses at v704 (346 olfactory cells send 82, 35 trigeminal 2, 48 lateral
+# line 3, 5 vagal 1): their central axons are not attached to their somata, so
+# no sense in mece-ganglia-v1 can reach a motor neuron. The rule here: the four
+# first-order sensory nuclei the atlas names that have a path to the motor set
+# at v704, one per game signal. The olfactory bulb and the area postrema were
+# tested and reach none; the atlas names no trigeminal sensory nucleus. Where
+# the atlas splits one nucleus across rhombomeres, both parts are the nucleus.
+# WHICH NUCLEUS CARRIES WHICH SIGNAL IS OUR PAIRING, NOT BIOLOGY. These are
+# SECOND-order neurons: the fish senses the world one synapse later than a
+# receptor would, and through vision, which the ganglia convention lacked.
+SENSORY_BRAIN_NUCLEI = [
+    ("pretectum", "reward", 2, ["Forebrain/Diencephalon/Pretectum"],
+     "Visual. The pretectum drives the larva's prey-capture (approach) "
+     "behaviour, so it carries the appetitive signal. Our pairing."),
+    ("tectum", "threat", 2, ["Midbrain/Tectum/Stratum Periventriculare"],
+     "Visual. Looming-evoked escape in the larva is tectal, so the tectum's "
+     "periventricular layer (its cell bodies) carries threat. Our pairing."),
+    ("medial_vestibular", "harm", 2, [
+        "Hindbrain/Rhombomere 5/Medial Vestibular Nucleus",
+        "Hindbrain/Rhombomere 6/Medial Vestibular Nucleus 1"],
+     "Vestibular. There is no annotated trigeminal (nociceptive) nucleus to "
+     "carry harm, so a vestibular nucleus does; this pairing is ours and has "
+     "no biological claim behind it. The atlas splits the nucleus over "
+     "rhombomeres 5 and 6; both parts are used."),
+    ("tangential_vestibular", "reserve", 2, [
+        "Hindbrain/Rhombomere 5/Tangential Vestibular Nucleus",
+        "Hindbrain/Rhombomere 6/Tangential Vestibular Nucleus1"],
+     "Vestibular (gravity and balance, a slow bodily state), carrying the "
+     "slow homeostatic signal. Our pairing. The atlas splits the nucleus "
+     "over rhombomeres 5 and 6; both parts are used."),
+]
+WARNING_BRAIN_NUCLEI = (
+    "This fish senses through four brain nuclei chosen by our convention, "
+    "because its peripheral sense organs are missing from the traced data.")
+SENSORY_BY_CONVENTION = {"mece-ganglia-v1": SENSORY,
+                         "brain-nuclei-v1": SENSORY_BRAIN_NUCLEI}
 
 # Annotated and EMPTY, which is a fact about the data and is reported rather
 # than worked around. `Retina` (mece0) and `Ganglia/Statoacoustic Ganglion`,
@@ -353,18 +437,38 @@ def fetch(version):
 
 # ---------------------------------------------------------------------- build
 
-def load_somas(version):
+def load_somas(version, wiring="proofread-v704"):
+    """Nodes, keyed by lore id, with the segment id that joins them to the
+    synapses in `key`: the v704 pt_root_id, or the agglomeration id sampled at
+    the soma's centroid by tools/fish1_agglomeration.py.
+
+    ONE RULE FOR BOTH WIRINGS: a soma with no segment is dropped, and a
+    segment carrying more than one soma is a merge -- which cell a synapse on
+    it belongs to cannot be said -- so every soma on it is dropped, with its
+    synapses. Never split by distance or given to the nearest soma."""
     import numpy as np
     import pandas as pd
     s = pd.read_parquet(os.path.join(RAW, "somas.v%d.parquet" % version))
     if len(s) != SOMAS_RELEASED:
         print("  NOTE: somas has %d rows, the release says %d" % (len(s), SOMAS_RELEASED))
-    root = s.pt_root_id.to_numpy("uint64")
+    if wiring == "agglomeration-241003":
+        f = os.path.join(AGG, "soma_agg.parquet")
+        if not os.path.exists(f):
+            raise SystemExit("missing %s -- run tools/fish1_agglomeration.py somas" % f)
+        a = pd.read_parquet(f).set_index("id").agg_id.reindex(s.id.to_numpy("int64"))
+        if a.isna().any():
+            raise SystemExit("soma_agg.parquet does not cover every soma")
+        s = s.assign(key=a.to_numpy("uint64"))
+    else:
+        s = s.assign(key=s.pt_root_id.to_numpy("uint64"))
+    root = s.key.to_numpy("uint64")
     u, cnt = np.unique(root[root != 0], return_counts=True)
     shared = u[cnt > 1]
     keep = (root != 0) & ~np.isin(root, shared)
     drop_noseg = int((root == 0).sum())
     drop_shared = int(((root != 0) & np.isin(root, shared)).sum())
+    merge_sizes = {int(k): int(v) for k, v in
+                   zip(*np.unique(cnt[cnt > 1], return_counts=True))}
     s = s[keep].reset_index(drop=True)
 
     rp = os.path.join(RAW, "soma_regions.v%d.parquet" % version)
@@ -390,10 +494,56 @@ def load_somas(version):
         "dropped_no_segment": drop_noseg,
         "dropped_root_shared_by_several_somas": drop_shared,
         "shared_roots": int(len(shared)),
+        "largest_merge": int(cnt.max()) if len(cnt) else 0,
+        "merges_by_somas_per_segment": merge_sizes,
+        "join_key": ("seg_241003_agg241003 id at the soma centroid (mip 0)"
+                     if wiring == "agglomeration-241003" else
+                     "pt_root_id at materialization %d" % version),
         "nodes": int(len(s)),
         "outside_every_mece_mask": unlabelled,
         "mece_level0": {k: int(v) for k, v in reg.l0.value_counts().items()},
     }
+
+
+def load_synapses_agg(root_sorted, order, n):
+    """The bulk synapses of syn_241003_agg241003_reorient_axde_ei, decoded by
+    tools/fish1_agglomeration.py, keyed by agglomeration id. Same contract as
+    load_synapses: both ends must be on a kept soma's segment."""
+    import numpy as np
+    files = sorted(glob.glob(os.path.join(AGG, "syn_*.npz")))
+    if len(files) != 8:
+        raise SystemExit("expected 8 decoded shards in %s, found %d -- run "
+                         "tools/fish1_agglomeration.py synapses" % (AGG, len(files)))
+    pres, posts, tags, ids = [], [], [], []
+    rows = pre_hit = post_hit = 0
+    types = {}
+    for f in files:
+        d = np.load(f)
+        rows += len(d["id"])
+        ids.append(d["id"])
+        t = d["type"]
+        for v, c in zip(*np.unique(t, return_counts=True)):
+            types[int(v)] = types.get(int(v), 0) + int(c)
+        a = map_roots(d["pre"], root_sorted, order, n)
+        b = map_roots(d["post"], root_sorted, order, n)
+        pre_hit += int((a >= 0).sum())
+        post_hit += int((b >= 0).sum())
+        m = (a >= 0) & (b >= 0)
+        tag = np.zeros(len(t), dtype="int8")
+        for src, dst in AGG_TYPE_TO_TAG.items():
+            tag[t == src] = dst
+        pres.append(a[m].astype("int32"))
+        posts.append(b[m].astype("int32"))
+        tags.append(tag[m])
+    distinct = int(len(np.unique(np.concatenate(ids))))
+    pre = np.concatenate(pres); post = np.concatenate(posts); tag = np.concatenate(tags)
+    return pre, post, tag, {
+        "rows_fetched": rows, "distinct_synapse_ids": distinct,
+        "released": rows,
+        "type_values": types,
+        "pre_endpoint_on_a_soma": pre_hit, "post_endpoint_on_a_soma": post_hit,
+        "both_endpoints_on_a_soma": int(len(pre)),
+        "untyped_dropped": int((tag == 0).sum())}
 
 
 def load_synapses(version, root_sorted, order, n):
@@ -407,7 +557,7 @@ def load_synapses(version, root_sorted, order, n):
     if not files:
         raise SystemExit("no cached synapse pages; run without --no-fetch")
     pres, posts, tags = [], [], []
-    rows = 0
+    rows = pre_hit = post_hit = 0
     seen_ids = []
     for f in files:
         df = pd.read_parquet(f)
@@ -415,6 +565,8 @@ def load_synapses(version, root_sorted, order, n):
         seen_ids.append(df.target_id.to_numpy("int64"))
         a = map_roots(df.pre_pt_root_id.to_numpy("uint64"), root_sorted, order, n)
         b = map_roots(df.post_pt_root_id.to_numpy("uint64"), root_sorted, order, n)
+        pre_hit += int((a >= 0).sum())
+        post_hit += int((b >= 0).sum())
         m = (a >= 0) & (b >= 0)
         pres.append(a[m].astype("int32"))
         posts.append(b[m].astype("int32"))
@@ -425,6 +577,8 @@ def load_synapses(version, root_sorted, order, n):
     pre = np.concatenate(pres); post = np.concatenate(posts); tag = np.concatenate(tags)
     return pre, post, tag, {"rows_fetched": rows, "distinct_synapse_ids": distinct,
                             "released": SYNAPSES_RELEASED,
+                            "pre_endpoint_on_a_soma": pre_hit,
+                            "post_endpoint_on_a_soma": post_hit,
                             "both_endpoints_on_a_soma": int(len(pre))}
 
 
@@ -578,10 +732,14 @@ def reachability(synapses, n, sensory, motor):
         }
     out["any_channel_reaches_the_motor_set"] = any(
         v["motor_neurons_reached"] > 0 for v in out["channels"].values())
+    # A seat needs EVERY sense to be able to move it: a channel that reaches
+    # nothing is a game signal the animal cannot respond to.
+    out["every_channel_reaches_the_motor_set"] = all(
+        v["motor_neurons_reached"] > 0 for v in out["channels"].values())
     return out
 
 
-def sets_by_convention(reg):
+def sets_by_convention(reg, convention="mece-ganglia-v1"):
     """Sensory channels and the motor set, from the published MECE labels.
 
     `reg` is the per-node region frame from tools/fish1_regions.py, already
@@ -590,7 +748,7 @@ def sets_by_convention(reg):
     says that is withdrawn, not patched."""
     import numpy as np
     sensory, prov = {}, {}
-    for ch, signal, level, wanted, why in SENSORY:
+    for ch, signal, level, wanted, why in SENSORY_BY_CONVENTION[convention]:
         col = reg["l%d" % level].to_numpy()
         idx = np.nonzero(np.isin(col, wanted))[0]
         if len(idx) == 0:
@@ -639,21 +797,30 @@ def sets_by_convention(reg):
     return motor_idx, nuclei, sensory, prov
 
 
-def build(version, convention, out_dir):
+def build(version, convention, out_dir, wiring="proofread-v704"):
     import numpy as np
     t0 = time.time()
-    s, pos, reg, dist, node_report = load_somas(version)
+    agg = wiring == "agglomeration-241003"
+    s, pos, reg, dist, node_report = load_somas(version, wiring)
     n = len(s)
     lore = s.id.to_numpy("int64")
     names = ["lore%d" % i for i in lore]
-    root = s.pt_root_id.to_numpy("uint64")
+    root = s.key.to_numpy("uint64")
     order = np.argsort(root)
     root_sorted = root[order]
 
-    pre, post, tag, syn_report = load_synapses(version, root_sorted, order, n)
+    if agg:
+        pre, post, tag, syn_report = load_synapses_agg(root_sorted, order, n)
+    else:
+        pre, post, tag, syn_report = load_synapses(version, root_sorted, order, n)
     print("  synapses: %d fetched, %d with both endpoints on a soma"
           % (syn_report["rows_fetched"], syn_report["both_endpoints_on_a_soma"]), flush=True)
-    if syn_report["distinct_synapse_ids"] != SYNAPSES_RELEASED:
+    if agg:
+        if syn_report["distinct_synapse_ids"] != syn_report["rows_fetched"]:
+            raise SystemExit("the decoded bulk shards repeat an annotation id "
+                             "(%d distinct of %d)" % (syn_report["distinct_synapse_ids"],
+                                                     syn_report["rows_fetched"]))
+    elif syn_report["distinct_synapse_ids"] != SYNAPSES_RELEASED:
         raise SystemExit(
             "the cached pages hold %d distinct synapse ids; the release says %d.\n"
             "    Offset paging skipped or duplicated something -- delete\n"
@@ -676,8 +843,16 @@ def build(version, convention, out_dir):
     synapses = list(zip(a.tolist(), b.tolist(), c.tolist()))
     del a, b, c
 
-    motor_idx, nuclei, sensory, sprov = sets_by_convention(reg)
-    senses = {ch: signal for ch, signal, _, _, _ in SENSORY}
+    SENS = SENSORY_BY_CONVENTION[convention]
+    motor_idx, nuclei, sensory, sprov = sets_by_convention(reg, convention)
+    senses = {ch: signal for ch, signal, _, _, _ in SENS}
+    seen_in = {}
+    for ch, idx in sensory.items():
+        for i in idx:
+            if i in seen_in:
+                raise SystemExit("neuron %d is in two sensory channels (%s, %s)"
+                                 % (i, seen_in[i], ch))
+            seen_in[i] = ch
     groups, rule = pk.deal_groups([[i] for i in motor_idx])
     motor = sorted({i for m in pk.MODULES for g in groups[m] for i in g})
     overlap = set(motor) & {i for v in sensory.values() for i in v}
@@ -685,7 +860,7 @@ def build(version, convention, out_dir):
         raise SystemExit("motor and sensory overlap by %d neurons" % len(overlap))
 
     reach = reachability(synapses, n, sensory, motor)
-    seatable = bool(reach.get("any_channel_reaches_the_motor_set"))
+    seatable = bool(reach.get("every_channel_reaches_the_motor_set"))
     seat_why = (
         "" if seatable else
         "NOT USABLE AS A SEAT at materialization %d, and the reason is the "
@@ -713,8 +888,44 @@ def build(version, convention, out_dir):
            "; ".join("%s reaches %d neurons in %d hops, 0 motor"
                      % (c, v["reaches"], v["hops"])
                      for c, v in reach["channels"].items())))
+    if agg and not seatable:
+        seat_why = (
+            "NOT USABLE AS A SEAT with the automated agglomeration "
+            "seg_241003_agg241003 either: %d of %d synapses (%.2f%%) have both "
+            "ends on an identified cell, %d of %d neurons have no edge, and no "
+            "directed path runs from any sensory channel to any of the %d "
+            "motor neurons (%s)."
+            % (syn_report["both_endpoints_on_a_soma"], syn_report["rows_fetched"],
+               100.0 * syn_report["both_endpoints_on_a_soma"] / max(1, syn_report["rows_fetched"]),
+               reach["isolated_neurons"], n, len(motor),
+               "; ".join("%s reaches %d neurons, %d motor"
+                         % (c, v["reaches"], v["motor_neurons_reached"])
+                         for c, v in reach["channels"].items())))
     if not seatable:
         print("  *** " + seat_why.split(". ")[0] + " ***", flush=True)
+    frac = lambda k: 100.0 * syn_report[k] / max(1, syn_report["rows_fetched"])
+    wiring_text = (
+        "%s The wiring is the public automated agglomeration "
+        "seg_241003_agg241003 (gs://fish1-public) and the bulk synapses keyed "
+        "by it, syn_241003_agg241003_reorient_axde_ei.precomputed -- the same "
+        "%d axon-to-dendrite synapses as CAVE's synapses_axde_label, with the "
+        "same e/i call (%s), read anonymously by "
+        "tools/fish1_agglomeration.py. It is the alternative to the proofread "
+        "ChunkedGraph at materialization %d, tried for ONE reason and judged on "
+        "reachability, not on any game: at v%d only 0.80%% of synapses have "
+        "both ends on a soma and no sensory channel reaches any motor neuron "
+        "(validation.reachability says whether this wiring does). In the "
+        "agglomeration a presynaptic endpoint lands on a soma-bearing segment "
+        "%.1f%% of the time (v%d: ~2%%), a postsynaptic one %.1f%% (~32%%), "
+        "and both %.2f%%. Nodes, regions, sensory channels, motor set and the "
+        "sign rule are unchanged; only the edges changed "
+        "(PREREGISTRATION.md, conventions)."
+        % (AGG_STATEMENT, syn_report["rows_fetched"],
+           ", ".join("type %d: %d" % kv for kv in sorted(syn_report.get("type_values", {}).items())),
+           version, version, frac("pre_endpoint_on_a_soma"), version,
+           frac("post_endpoint_on_a_soma"), frac("both_endpoints_on_a_soma"))
+        if agg else
+        "Proofread CAVE ChunkedGraph at materialization %d (pt_root_id)." % version)
 
     mece_cite = (
         "The region masks are the source's own, published and world-readable "
@@ -744,7 +955,7 @@ def build(version, convention, out_dir):
         "labelled Spinal Cord while the rest are labelled nothing."
         % "/".join(str(node_report["outside_every_mece_mask"][c])
                    for c in ("l0", "l1", "l2")))
-    conv_sensory = (
+    conv_sensory_ganglia = (
         "SOURCE ANNOTATION plus a stated CONVENTION (not a source annotation) "
         "for the grouping and the signal assignment. The SETS are Fish1's own "
         "MECE regions and nothing was picked: every peripheral sensory "
@@ -773,7 +984,34 @@ def build(version, convention, out_dir):
            "; ".join("%s = %s (%d cells, %s)"
                      % (ch, sprov[ch]["signal"], sprov[ch]["neurons"],
                         ", ".join(sprov[ch]["regions"])) for ch, _, _, _, _ in SENSORY),
-           convention))
+           convention)) if convention == "mece-ganglia-v1" else None
+    conv_sensory = conv_sensory_ganglia or (
+        "CONVENTION (not a source annotation): the fish senses through four "
+        "brain nuclei, because Fish1's peripheral sensory cells have almost no "
+        "traced synapses. At v%d the 346 olfactory, 35 trigeminal, 48 "
+        "lateral-line and 5 vagal ganglion cells together send 88 synapses, "
+        "their central axons unattached to their somata, so no peripheral "
+        "sense reaches a motor neuron. The rule: the four first-order sensory "
+        "nuclei the atlas names that have a path to the motor set at v704, one "
+        "per game signal; the olfactory bulb and area postrema were tested "
+        "and reach none; the atlas names no trigeminal sensory nucleus. Which "
+        "nucleus carries which signal is OUR PAIRING, NOT BIOLOGY. These are "
+        "second-order neurons, so the fish senses the game one synapse later "
+        "than a receptor would, and it now has vision (pretectum, tectum), "
+        "which the earlier convention lacked. This REPLACES the peripheral-"
+        "ganglia convention mece-ganglia-v1; it does not extend it, and no "
+        "neuron is in two channels. It was adopted on reachability alone, "
+        "before any game (PREREGISTRATION.md, Conventions adopted). A MECE "
+        "mask is an atlas REGION, not a per-cell call, so each channel is "
+        "SOMATA INSIDE the nucleus and is over-inclusive; the channels are "
+        "very unequal (%s) and are left that way. Channels: %s. %s || %s || "
+        "Convention id: %s."
+        % (version,
+           " / ".join(str(sprov[ch]["neurons"]) for ch, _, _, _, _ in SENS),
+           "; ".join("%s = %s (%d cells, %s)"
+                     % (ch, sprov[ch]["signal"], sprov[ch]["neurons"],
+                        ", ".join(sprov[ch]["regions"])) for ch, _, _, _, _ in SENS),
+           mece_cite, conv_join, convention))
     conv_motor = (
         "SOURCE ANNOTATION plus the same stated CONVENTION (not a source "
         "annotation) for the join. %d SOMATA INSIDE THE ANNOTATED CRANIAL "
@@ -808,7 +1046,11 @@ def build(version, convention, out_dir):
     meta = {
         "species": "zebrafish_larva",
         "dataset": "Fish1 (%s)" % DATASET,
-        "version": "CAVE datastack %s, materialization %d" % (DATASTACK, version),
+        "version": ("seg_241003_agg241003 automated agglomeration + "
+                    "syn_241003_agg241003_reorient_axde_ei (gs://fish1-public); "
+                    "somas from CAVE %s materialization %d" % (DATASTACK, version)
+                    if agg else
+                    "CAVE datastack %s, materialization %d" % (DATASTACK, version)),
         "n": n,
         "names": names,
         "lore_ids": [int(i) for i in lore],
@@ -820,6 +1062,8 @@ def build(version, convention, out_dir):
         "partition_seed": pk.PARTITION_SEED,
         "window_ms": 200,
         "provenance": {
+            "wiring": wiring,
+            "wiring_source": wiring_text,
             "neurons": (
                 "Nodes are somas from the `somas` table at materialization %d, "
                 "keyed by LORE ID (the stable small integer), which is what "
@@ -833,9 +1077,30 @@ def build(version, convention, out_dir):
                 "nodes."
                 % (version, SOMAS_RELEASED, node_report["dropped_no_segment"],
                    node_report["dropped_root_shared_by_several_somas"],
-                   node_report["shared_roots"], 19, n)),
+                   node_report["shared_roots"], node_report["largest_merge"], n)
+                if not agg else
+                "Nodes are somas from the `somas` table (CAVE materialization "
+                "%d), keyed by LORE ID, which is what `names` holds as "
+                "lore<id>. The join key to the synapses is the "
+                "seg_241003_agg241003 segment id sampled at each soma's "
+                "published centroid (pt_position 8x8x30 nm -> the layer's mip 0 "
+                "at 16x16x30 nm: x and y halved) by "
+                "tools/fish1_agglomeration.py -- a join that is OURS, since no "
+                "released table maps somas to agglomeration ids. Of the %d "
+                "somas released, %d land on no segment and %d share a segment "
+                "with another soma (%d such segments, up to %d somas on one) -- "
+                "a merge, which in an automated agglomeration is expected, and "
+                "which makes the cell a synapse belongs to unknowable -- so "
+                "both groups are dropped, by the same rule as the proofread "
+                "export, leaving %d nodes."
+                % (version, SOMAS_RELEASED, node_report["dropped_no_segment"],
+                   node_report["dropped_root_shared_by_several_somas"],
+                   node_report["shared_roots"], node_report["largest_merge"], n)),
             "signs": (
-                "Per synapse from `synapses_axde_label` (tag 1 inhibitory, 2 "
+                ("Per synapse from the bulk layer's `type` property -- the same "
+                 "call as CAVE's `synapses_axde_label`, with identical counts "
+                 "per value -- " if agg else "Per synapse from `synapses_axde_label` ") +
+                "(tag 1 inhibitory, 2 "
                 "excitatory) for all %d axon-to-dendrite synapses. A LIF "
                 "neuron has ONE sign, so each presynaptic cell takes the "
                 "MAJORITY of its own labelled synapses; an exact tie is "
@@ -857,6 +1122,24 @@ def build(version, convention, out_dir):
             "sign_validation": clem,
             "sign_report": sign_report,
             "synapses": (
+                ("%d synapses decoded from the by_id shards of "
+                 "syn_241003_agg241003_reorient_axde_ei.precomputed, %d distinct "
+                 "annotation ids (0..%d, the same count CAVE releases). %d have "
+                 "both endpoints on a kept soma's segment; the other %d touch a "
+                 "segment with no soma, or a soma dropped above, and are "
+                 "dropped. %d more are dropped for an unknown (tied) "
+                 "presynaptic sign and %d are self-synapses. What remains is "
+                 "%d ordered pairs, each a signed count; %d exceeded int16 and "
+                 "were clamped to %d (largest pair: %d synapses). %s"
+                 % (syn_report["rows_fetched"], syn_report["distinct_synapse_ids"],
+                    syn_report["rows_fetched"] - 1,
+                    syn_report["both_endpoints_on_a_soma"],
+                    syn_report["rows_fetched"] - syn_report["both_endpoints_on_a_soma"],
+                    edge_report["dropped_unknown_sign"],
+                    edge_report["self_synapses_dropped"], edge_report["pairs"],
+                    edge_report["pairs_clamped_to_int16"], I16_MAX,
+                    edge_report["largest_pair_count"], AGG_STATEMENT))
+                if agg else
                 "%d synapses fetched from `synapses_axde_label` (a reference "
                 "table on `synapses_axde`, so one query returns the tag and "
                 "both root ids), fetched in disjoint, contiguous ranges of "
@@ -936,7 +1219,7 @@ def build(version, convention, out_dir):
             "why_no_seat": seat_why or None,
             "exported": datetime.date.today().isoformat(),
             "exporter": "tools/fish1_export.py",
-            "source_bucket_not_used": (
+            "source_bucket_not_used": None if agg else (
                 "gs://fish1-public holds the same synapses in bulk as "
                 "neuroglancer sharded annotations "
                 "(syn_241003_agg241003_reorient_axde_ei.precomputed, 1.8 GB), "
@@ -958,6 +1241,8 @@ def build(version, convention, out_dir):
              rule, time.time() - t0))
     return {
         "dataset_version": meta["version"],
+        "wiring": wiring,
+        "wiring_source": wiring_text,
         "datastack": DATASTACK,
         "dataset": DATASET,
         "server": GLOBAL_URL,
@@ -966,7 +1251,9 @@ def build(version, convention, out_dir):
         "exporter": "tools/fish1_export.py",
         "package": os.path.relpath(out_dir, ROOT),
         "package_bytes": size,
-        "sign_source": ("synapses_axde_label, per synapse; one sign per cell by "
+        "sign_source": (("the bulk layer's per-synapse `type` (identical in count "
+                         "to synapses_axde_label: 1 inhibitory, 2 excitatory)"
+                         if agg else "synapses_axde_label") + ", per synapse; one sign per cell by "
                         "majority. Checked against somas.cell_type (confocal "
                         "vglut2a/gad1b), which was not used to assign it."),
         "sensory_motor": ("CONVENTION, not an annotation: see docs/fish1-mapping.md "
@@ -974,7 +1261,9 @@ def build(version, convention, out_dir):
                           "id: %s" % convention),
         "licence": LICENCE,
         "counts": {"somas_released": SOMAS_RELEASED, "neurons": n,
-                   "synapses_released": SYNAPSES_RELEASED,
+                   "synapses_released": syn_report["rows_fetched"],
+                   "synapses_pre_on_a_soma": syn_report["pre_endpoint_on_a_soma"],
+                   "synapses_post_on_a_soma": syn_report["post_endpoint_on_a_soma"],
                    "synapses_both_ends_on_a_soma": syn_report["both_endpoints_on_a_soma"],
                    "ordered_pairs": edge_report["pairs"],
                    "dropped_unknown_sign": edge_report["dropped_unknown_sign"],
@@ -996,14 +1285,23 @@ def main():
                          "no default, so a run always names the convention it "
                          "used; it is written out in docs/fish1-mapping.md and "
                          "the fish shows it to the viewer as a warning.")
+    ap.add_argument("--wiring", choices=WIRINGS, default="proofread-v704",
+                    help="where the EDGES come from: the proofread CAVE "
+                         "ChunkedGraph at --materialization, or the public "
+                         "automated agglomeration seg_241003_agg241003 "
+                         "(run tools/fish1_agglomeration.py all first). "
+                         "Nothing else differs.")
     ap.add_argument("--no-fetch", action="store_true")
     ap.add_argument("--no-roster", action="store_true")
     ap.add_argument("--out", default=os.path.join(ROOT, "web", "species", "zebrafish_larva"))
     args = ap.parse_args()
 
     if not args.no_fetch:
+        # The agglomeration wiring still needs the somas table (positions,
+        # lore ids, the confocal label) from CAVE; fetch() is a no-op when the
+        # cache is complete.
         fetch(args.materialization)
-    block = build(args.materialization, args.sensory_convention, args.out)
+    block = build(args.materialization, args.sensory_convention, args.out, args.wiring)
     if not args.no_roster:
         path = os.path.join(ROOT, "data", "roster.json")
         d = json.load(open(path))
@@ -1020,7 +1318,20 @@ def main():
                 # (working / candidate / station-only) is read by the page,
                 # and seat + why_no_seat already carry the verdict.
                 s["seat"] = bool(block["usable_as_a_seat"])
-                if not s["seat"]:
+                s["wiring"] = args.wiring
+                s["sensory_convention"] = args.sensory_convention
+                if s["seat"] and args.sensory_convention == "brain-nuclei-v1":
+                    s["warning"] = WARNING_BRAIN_NUCLEI
+                else:
+                    s.pop("warning", None)
+                if args.wiring == "agglomeration-241003":
+                    s["wiring_note"] = AGG_STATEMENT
+                else:
+                    s.pop("wiring_note", None)
+                if not s["seat"] and args.wiring == "agglomeration-241003":
+                    s["why_no_seat"] = block["why_no_seat"]
+                    s["blocker"] = block["why_no_seat"]
+                elif not s["seat"]:
                     s["why_no_seat"] = block["why_no_seat"]
                     s["blocker"] = ("Fish1 v%d: axons are unproofread, so only "
                                     "%.2f%% of synapses have both ends on an "
@@ -1032,6 +1343,7 @@ def main():
                                        / max(1, block["counts"]["synapses_released"])))
                 else:
                     s.pop("why_no_seat", None)
+                    s.pop("blocker", None)
         with open(path + ".tmp", "w") as f:
             json.dump(d, f, indent=2, ensure_ascii=False)
             f.write("\n")
