@@ -21,7 +21,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from open_animal_stage.signs import (          # noqa: E402
     Sign, Unlabelled, fish1_sign, coverage, fish1_expected_coverage,
-    FISH1_RELEASE)
+    FISH1_RELEASE, transmitter_sign)
 
 checks = 0
 fails = 0
@@ -94,6 +94,22 @@ ok(21.0 < pct < 23.0,
 # wrong coverage figure into the metadata.
 ok(FISH1_RELEASE["vglut2a"] + FISH1_RELEASE["gad1b"] < FISH1_RELEASE["somas"],
    "and the labelled cells are a subset of the somas, not more than all of them")
+
+print("\n== the classical-transmitter rule (worm, sea squirt) ==")
+ok(transmitter_sign({"ACh"}) is Sign.EXCITATORY, "acetylcholine is excitatory")
+ok(transmitter_sign({"Glu"}) is Sign.EXCITATORY,
+   "glutamate is excitatory, by the one documented rule")
+ok(transmitter_sign({"GABA"}) is Sign.INHIBITORY, "GABA is inhibitory")
+ok(transmitter_sign({"Gly"}) is Sign.INHIBITORY, "glycine is inhibitory")
+ok(transmitter_sign({"ACh", "GABA"}) is Sign.UNKNOWN,
+   "a co-transmitting cell is UNKNOWN, not the first transmitter listed")
+ok(transmitter_sign({"DA"}) is Sign.UNKNOWN and transmitter_sign([]) is Sign.UNKNOWN,
+   "a monoamine-only or unlabelled cell is UNKNOWN, never assumed excitatory")
+try:
+    transmitter_sign("GABA")
+    ok(False, "a bare string is refused")
+except TypeError:
+    ok(True, "a bare string is refused (it would be read letter by letter)")
 
 print("\n%d checks, %d failed" % (checks, fails))
 sys.exit(1 if fails else 0)

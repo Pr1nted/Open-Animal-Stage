@@ -19,8 +19,33 @@ WHERE EACH SPECIES' SIGNS COME FROM
                       (GABAergic, inhibitory). That is 41,425 of 187,053 -- 22%.
                       The other 78% have no label at all.
   c_elegans           Neurotransmitter assignments are published per neuron and
-                      have been for years.
+                      have been for years. The exporter reads Wang et al.
+                      (2024, eLife 13:RP95402), the reporter-allele atlas that
+                      covers both sexes, and applies `transmitter_sign` below.
   ciona_larva         Not established per neuron in the connectome paper.
+                      Kourakis et al. (2019, eLife 8:e44753) assign transmitters
+                      by CELL CLASS (in situ registration to the connectome),
+                      and the exporter applies `transmitter_sign` to those.
+
+THE CLASSICAL-TRANSMITTER RULE (worm and sea squirt)
+
+  ACh, Glu        excitatory
+  GABA, Gly       inhibitory
+  both kinds      UNKNOWN -- a co-transmitting cell is real biology, not a
+                  measurement error, but one sign per neuron cannot say it, and
+                  picking one would bury it. Same stance as a Fish1 cell that
+                  carries both markers.
+  neither         UNKNOWN -- monoamines, neuropeptides and orphans act mostly
+                  through metabotropic receptors whose sign is the receptor's,
+                  not the transmitter's.
+
+GLUTAMATE IS CALLED EXCITATORY EVERYWHERE, AND THAT IS KNOWN TO BE WRONG IN
+PLACES. The worm has glutamate-gated chloride channels (GLC-3, AVR-14, ...), so
+some glutamatergic synapses inhibit -- AWC onto AIY is the textbook case
+(Chalasani et al. 2007). Deciding per synapse would need the receptor of every
+postsynaptic cell, which is not in the data we export from, and a per-synapse
+exception list would be a place to tune. So the rule is one line, and this
+paragraph is where it admits what it gets wrong.
 
 THE UNLABELLED ARE A DECISION, NOT A FACT
 
@@ -126,3 +151,31 @@ def fish1_expected_coverage():
     """What the Fish1 release's own numbers imply, before any export runs."""
     lab = FISH1_RELEASE["vglut2a"] + FISH1_RELEASE["gad1b"]
     return coverage(lab, FISH1_RELEASE["somas"])
+
+
+# The classical-transmitter rule, for species whose sources name a transmitter
+# per neuron (or per class) rather than a marker. See the module docstring.
+EXCITATORY_TRANSMITTERS = frozenset({"ACh", "Glu"})
+INHIBITORY_TRANSMITTERS = frozenset({"GABA", "Gly"})
+
+
+def transmitter_sign(transmitters):
+    """The sign of a neuron from the set of transmitters a source gives it.
+
+    `transmitters` is any iterable of names; only ACh, Glu, GABA and Gly are
+    read, everything else (monoamines, peptides, "unknown") is ignored. A cell
+    with both an excitatory and an inhibitory transmitter is UNKNOWN, and so is
+    a cell with neither -- never assumed excitatory.
+    """
+    if isinstance(transmitters, str):
+        raise TypeError("pass a collection of transmitter names, not one "
+                        "string -- %r would be read letter by letter"
+                        % transmitters)
+    got = set(transmitters)
+    exc = bool(got & EXCITATORY_TRANSMITTERS)
+    inh = bool(got & INHIBITORY_TRANSMITTERS)
+    if exc and not inh:
+        return Sign.EXCITATORY
+    if inh and not exc:
+        return Sign.INHIBITORY
+    return Sign.UNKNOWN
