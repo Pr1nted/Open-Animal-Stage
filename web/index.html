@@ -1567,7 +1567,8 @@ async function playForever() {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h;
-  if (w > 900 && !pov) camera.setViewOffset(w, h, -40, 0, w, h); else camera.clearViewOffset();
+  // A clean frame (record.js) has no panels to make room for.
+  if (w > 900 && !pov && !document.body.classList.contains("oas-clean")) camera.setViewOffset(w, h, -40, 0, w, h); else camera.clearViewOffset();
   if (pov) renderer.setPixelRatio(Math.max(0.05, (MOUSE_FOV * 2) / w));
   camera.updateProjectionMatrix();
   for (const st of stations) if (st.brain) st.brain.mat.uniforms.uScale.value = (h / 900) * 1.1;
@@ -1578,8 +1579,22 @@ resize();
 // ?debug hands the scene to the console, for checking camera views and
 // stations by measurement instead of by squinting at screenshots.
 if (new URLSearchParams(location.search).has("debug")) window.__stage = { camera, scene, G, views: () => VIEWS, goTo, game, brains };
-const clock = new THREE.Clock();
-let lastMs = performance.now();
+// ?record and ?capture hand the camera and the clock to web/record.js. Under
+// ?capture time is VIRTUAL: nothing renders on its own, and each step() moves
+// the page's clock on by exactly 1/30 s and draws one frame, so a frame grabber
+// gets smooth motion however slow the machine is.
+const RECQ = new URLSearchParams(location.search), CAPTURE = RECQ.has("capture");
+let vms = 0;
+const clock = CAPTURE ? { getElapsedTime: () => vms / 1000 } : new THREE.Clock();
+let lastMs = CAPTURE ? 0 : performance.now();
+if (RECQ.has("record") || CAPTURE) window.__oas = {
+  camera, scene, renderer, canvas, G, game, views: () => VIEWS, goTo, resize, enterMouseEyes, exitMouseEyes, capture: CAPTURE,
+  inPov: () => !!pov, beforeRender: null, now: () => clock.getElapsedTime(),
+  // Put the camera at pos looking at look, and keep the page's own yaw/pitch in
+  // step, so dragging after a tour continues from where the tour left it.
+  aim(pos, look) { camera.position.set(...pos); const to = lookFrom(pos, look); yaw = to.yaw; pitch = to.pitch; tween = null; applyCamera(); },
+  step(n = 1) { for (let i = 0; i < n; i++) { vms += 1000 / 30; loop(vms); } },
+};
 // A turn sets how active the animal should look; it gets there over about
 // half a second, and the target fades between turns. Snapping to it made every
 // turn a visible jolt.
@@ -1622,8 +1637,9 @@ function loop(nowMs) {
     if (!reduceMotion) st.animal.animate(now, st.drive);
     if (st.brain) { const a = st.brain.activity; for (let i = 0; i < a.length; i++) a[i] = a[i] > 0.002 ? a[i] * k : 0; st.brain.actAttr.needsUpdate = true; if (!reduceMotion) st.brain.holder.rotation.y = now * 0.12; }
   }
+  if (window.__oas && window.__oas.beforeRender) window.__oas.beforeRender(dt, now);
   renderer.render(scene, camera);
-  requestAnimationFrame(loop);
+  if (!CAPTURE) requestAnimationFrame(loop);
 }
 
 (async () => {
@@ -1636,7 +1652,7 @@ function loop(nowMs) {
   }
   try {
     const loadText = $("loadText");
-    requestAnimationFrame(loop);
+    if (!CAPTURE) requestAnimationFrame(loop);
     loadText.textContent = "Reading the roster…";
     await readRoster();
     if (!playable().length) throw new Error("no species package is in ./species/. Run the exporters in tools/ first (see README).");
@@ -1672,3 +1688,5 @@ function loop(nowMs) {
   }
 })();
 </script>
+<!-- ?record: a clean frame and a canvas recorder; ?capture: frame-exact capture for tools/trailer. -->
+<script type="module" src="./record.js"></script>
