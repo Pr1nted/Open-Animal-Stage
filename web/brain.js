@@ -47,10 +47,14 @@ export class AnimalBrain {
     this.indptr = new Uint32Array(connectome, off, n + 1); off += (n + 1) * 4;
     this.post = new Uint32Array(connectome, off, nsyn); off += nsyn * 4;
     this.count = new Int16Array(connectome, off, nsyn); off += nsyn * 2;
-    off = (off + 3) & ~3;
-    this.gapA = new Uint32Array(connectome, off, ngap); off += ngap * 4;
-    this.gapB = new Uint32Array(connectome, off, ngap); off += ngap * 4;
-    this.gapW = new Float32Array(connectome, off, ngap); off += ngap * 4;
+    // Open Fly's SFC1 ends here with no padding, so the gap arrays are only
+    // located when there are any.
+    if (ngap) {
+      off = (off + 3) & ~3;
+      this.gapA = new Uint32Array(connectome, off, ngap); off += ngap * 4;
+      this.gapB = new Uint32Array(connectome, off, ngap); off += ngap * 4;
+      this.gapW = new Float32Array(connectome, off, ngap); off += ngap * 4;
+    } else { this.gapA = new Uint32Array(0); this.gapB = new Uint32Array(0); this.gapW = new Float32Array(0); }
     if (off > connectome.byteLength) throw new Error("connectome.bin is shorter than its header says");
     for (let i = 0; i < n; i++) if (this.indptr[i] > this.indptr[i + 1]) throw new Error("connectome.bin: indptr is not monotone");
     if (this.indptr[n] !== nsyn) throw new Error("connectome.bin: indptr does not end at the synapse count");

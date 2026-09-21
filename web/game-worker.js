@@ -12,11 +12,16 @@ let od = null, api = null;
 // The game's data package comes in parts (see packed.js) and is handed to the
 // module whole: Emscripten asks getPreloadedPackage before it would fetch the
 // .data file itself, so the module never goes looking for the 22 MB original.
-const ready = loadPacked("./agent/OpenDoctrinesAgent.pack.json",
-  (got, total) => self.postMessage({ type: "progress", got, total }))
+// A local build has the .data whole and no manifest; then the module fetches it
+// itself, as Emscripten does by default.
+const packUrl = new URL("./agent/OpenDoctrinesAgent.pack.json", import.meta.url).href;
+const ready = fetch(packUrl, { method: "HEAD" })
+  .then((r) => (r.ok && (r.headers.get("content-type") || "").includes("json")
+    ? loadPacked(packUrl, (got, total) => self.postMessage({ type: "progress", got, total }))
+    : null))
   .then((dataPackage) => createOpenDoctrinesAgent({
     locateFile: (path) => new URL(`./agent/${path}`, import.meta.url).href,
-    getPreloadedPackage: () => dataPackage,
+    ...(dataPackage ? { getPreloadedPackage: () => dataPackage } : {}),
     print: (line) => self.postMessage({ type: "log", line }),
     printErr: (line) => self.postMessage({ type: "log", line }),
   }))

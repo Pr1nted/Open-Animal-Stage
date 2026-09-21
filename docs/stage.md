@@ -82,11 +82,12 @@ Stations are generated rather than hand-modelled, as Open Fly's are: a script in
 | Piece | State |
 |---|---|
 | Open Doctrines as WASM with an agent session | exists, Open Fly uses it |
-| LIF brain core | exists, `open_fly/brain.py` |
-| Fly encode / decode | exists, Open Fly |
-| Multi-seat driver | **to write** |
-| One worker per animal | **to write** |
-| Per-species encode / decode | **to write, one per species** |
-| Zebrafish model from Fish1 | **to write**, the largest piece |
-| Shuffled-wiring control | **to write**, and it is the one that makes the stage worth anything |
-| Stations | **to write**, generated |
+| Several seats in one world | **done**: `patches/opendoctrines-stage.patch`, checked by `tools/stage_check.mjs` |
+| One worker per animal | **done**: `web/brain-worker.js` |
+| One brain engine for every species | **done**: `web/brain.js`, identical to Open Fly's on the fly |
+| Per-species encode / decode | **done** as data: `senses` and `groups` in each package |
+| Shuffled-wiring control | **done**, per seat, in the browser |
+| Stations | **done**, generated in `web/index.html` |
+| The mouse's station | **done**: the MICrONS twin in `web/mouse-worker.js` |
+| Zebrafish model from Fish1 | **to do**: needs a CAVE token, then `tools/fish1_export.py` |
+| Fly larva seat | **blocked** on a sign source |

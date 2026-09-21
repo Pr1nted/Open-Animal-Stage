@@ -1,14 +1,16 @@
+<!doctype html>
 <meta charset="utf-8">
 <title>Open Animal Stage</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Mapped animal brains play Open Doctrines against each other, live in your browser. A sister project to Open Fly.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-  /* Open Fly's palette, deliberately: the two pages should look like one
-     project. The room is the same room; only the tenants differ. */
+  /* Open Fly's palette and furniture, deliberately: the two pages are one
+     project. The room is the same room with more tenants in it. */
   :root {
     --room: #0C1113;
-    --glass: rgba(10, 16, 18, 0.8);
+    --glass: rgba(10, 16, 18, 0.82);
     --glass-edge: rgba(237, 230, 214, 0.10);
     --paper: #EDE6D6;
     --muted: #8F9A97;
@@ -22,112 +24,1042 @@
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--room); color: var(--paper);
-         font: 14px/1.5 var(--body); padding: 28px 20px 60px; }
-  .wrap { max-width: 1040px; margin: 0 auto; }
-  h1 { margin: 0; font: 800 46px/0.9 var(--display); letter-spacing: .01em;
-       text-transform: uppercase; }
-  h1 span { color: var(--amber); }
-  .sub { margin: 10px 0 0; color: var(--muted); max-width: 62ch; text-wrap: balance; }
-  .early { display: inline-flex; gap: 7px; align-items: center; margin-top: 16px;
-           font: 600 11px/1 var(--mono); letter-spacing: .14em; color: #FBD9D3;
-           background: rgba(224,98,79,.18); border: 1px solid rgba(224,98,79,.5);
-           border-radius: 999px; padding: 6px 11px; }
-  h2 { font: 800 15px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
-       color: var(--muted); margin: 40px 0 14px; }
-  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); }
-  .card { background: var(--glass); border: 1px solid var(--glass-edge);
-          border-radius: 14px; padding: 15px; display: grid; gap: 7px; align-content: start; }
-  .card.seat { border-color: rgba(127,201,138,.42); }
-  .card .name { font: 600 17px/1.15 var(--body); }
-  .card .detail { color: var(--muted); font-size: 12.5px; }
-  .card .n { font: 600 13px/1 var(--mono); color: var(--teal); }
-  .tag { justify-self: start; font: 600 10px/1 var(--mono); letter-spacing: .1em;
-         text-transform: uppercase; border-radius: 999px; padding: 5px 9px;
-         border: 1px solid currentColor; }
-  .tag.plays { color: var(--good); }
-  .tag.watch { color: var(--amber); }
-  .tag.nope  { color: var(--war); }
-  .card .why { color: var(--muted); font-size: 12px; border-top: 1px solid var(--glass-edge);
-               padding-top: 7px; margin-top: 2px; }
-  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--glass-edge);
-           color: var(--muted); font-size: 12.5px; display: grid; gap: 8px; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--room); color: var(--paper); font: 14px/1.45 var(--body); overflow: hidden; }
+  #stage { position: fixed; inset: 0; display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; outline: none; }
+  #stage:active { cursor: grabbing; }
+  .glass { background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  button, select { font: 500 12.5px/1 var(--body); color: var(--paper); background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+  button:hover, select:hover { border-color: rgba(242, 184, 75, 0.55); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible, select:focus-visible, #stage:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
   a { color: var(--amber); }
-  table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--glass-edge); }
-  th { color: var(--muted); font: 600 10.5px/1 var(--mono); letter-spacing: .1em;
-       text-transform: uppercase; }
-  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--teal); }
+
+  .ident { position: fixed; top: 18px; left: 20px; max-width: 420px; pointer-events: none; }
+  .ident h1 { margin: 0; font: 800 44px/0.9 var(--display); letter-spacing: 0.01em; text-transform: uppercase; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ident h1 span { color: var(--amber); }
+  .live { font: 600 11px/1 var(--mono); letter-spacing: 0.14em; color: #FBD9D3; background: rgba(224, 98, 79, 0.2); border: 1px solid rgba(224, 98, 79, 0.5); border-radius: 999px; padding: 5px 9px 5px 8px; display: inline-flex; gap: 6px; align-items: center; font-style: normal; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--war); display: inline-block; animation: beat 1.4s ease-in-out infinite; }
+  @keyframes beat { 50% { opacity: 0.25; } }
+  .ident p { margin: 8px 0 0; color: var(--muted); font-size: 13px; text-wrap: balance; }
+
+  .views { position: fixed; top: 18px; right: 20px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 58vw; }
+  .views button { border-radius: 999px; padding: 8px 12px; display: inline-flex; align-items: center; gap: 7px; }
+  .views button i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .views button[aria-pressed="true"] { background: var(--amber); color: #1B1406; border-color: var(--amber); }
+
+  .setup { position: fixed; left: 20px; top: 150px; width: 330px; max-height: calc(100vh - 250px); overflow-y: auto; border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+  .setup[data-open="false"] > :not(h2) { display: none; }
+  .setup h2, .rail h2 { margin: 0; font: 600 11px/1 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .fold { all: unset; cursor: pointer; display: flex; width: 100%; justify-content: space-between; }
+  .setup label { display: grid; gap: 5px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .setup select { width: 100%; text-transform: none; letter-spacing: 0; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .presets button { border-radius: 999px; padding: 6px 10px; font-size: 12px; }
+  .seatrows { display: grid; gap: 8px; }
+  .seatrow { border: 1px solid var(--glass-edge); border-left: 3px solid var(--c); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
+  .seatrow .top { display: flex; gap: 6px; align-items: center; }
+  .seatrow .top select { flex: 1; min-width: 0; }
+  .seatrow .row2 { display: flex; gap: 6px; }
+  .seatrow .row2 select { flex: 1; min-width: 0; }
+  .seatrow .x { padding: 6px 9px; }
+  .go { background: var(--amber) !important; color: #1B1406 !important; border-color: var(--amber) !important; font-weight: 600 !important; }
+  .note { font-size: 12px; color: var(--muted); margin: 0; }
+  .note.warn { color: #FBD9D3; }
+  .setup .check span { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font-size: 12.5px; color: var(--paper); }
+  .roster { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .roster div { display: flex; justify-content: space-between; gap: 8px; }
+  .roster b { font-weight: 500; color: var(--paper); }
+  .roster .why { font-size: 11px; text-align: right; }
+
+  .rail { position: fixed; top: 76px; right: 20px; width: 360px; max-height: calc(100vh - 176px); overflow-y: auto; border-radius: 14px; padding: 14px 14px 12px; display: grid; gap: 10px; align-content: start; }
+  .gamehead .label { font: 600 11px/1 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .gamehead .turn { display: block; font: 800 26px/1.05 var(--display); text-transform: uppercase; margin-top: 4px; }
+  .board { display: grid; gap: 8px; }
+  .card { border: 1px solid var(--glass-edge); border-left: 3px solid var(--c); border-radius: 10px; padding: 9px 10px; display: grid; gap: 5px; }
+  .card .who { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
+  .card .who strong { font: 600 14px/1.2 var(--body); }
+  .card .who span { font: 600 11px/1 var(--mono); color: var(--muted); }
+  .card .nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font: 500 12px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+  .card .nums small { display: block; font: 500 10px/1.2 var(--body); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  .card .orders { font-size: 12px; color: var(--muted); }
+  .card .orders b { color: var(--paper); font-weight: 500; }
+  .card .state { font: 600 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+  .card .warn { font-size: 11.5px; color: #FBD9D3; background: rgba(224,98,79,.14); border: 1px solid rgba(224,98,79,.4); border-radius: 8px; padding: 6px 8px; }
+  .roster .warn { color: #FBD9D3; }
+  .card .state.think { color: var(--teal); } .card .state.dead { color: var(--war); } .card .state.fault { color: var(--war); }
+  .up { color: var(--good); } .down { color: var(--war); }
+  .fine { font-size: 11.5px; color: var(--muted); margin: 0; }
+
+  .statusbar { position: fixed; left: 20px; right: 400px; bottom: 18px; border-radius: 14px; padding: 10px 14px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 14px; align-items: center; }
+  .now strong { display: block; font: 600 14px/1.2 var(--body); }
+  .now span { color: var(--muted); font-size: 12.5px; }
+  .spark canvas { width: 100%; height: 48px; display: block; }
+
+  .loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--room); z-index: 10; transition: opacity .5s; }
+  .loading[data-done="true"] { opacity: 0; pointer-events: none; }
+  .loading div { text-align: center; max-width: 440px; padding: 0 16px; }
+  .loading strong { font: 800 34px/1 var(--display); text-transform: uppercase; }
+  .loading p { color: var(--muted); }
+  .loading .err { color: #FBD9D3; }
+
+  @media (max-width: 900px) {
+    .ident h1 { font-size: 32px; } .ident p { display: none; }
+    .views { top: auto; bottom: 150px; left: 16px; right: 16px; max-width: none; justify-content: flex-start; }
+    .setup { top: 70px; left: 16px; right: 16px; width: auto; max-height: 50vh; }
+    .rail { top: auto; bottom: 200px; left: 16px; right: 16px; width: auto; max-height: 28vh; }
+    .statusbar { left: 16px; right: 16px; bottom: 16px; grid-template-columns: 1fr; }
+  }
 </style>
 
-<div class="wrap">
-  <h1>Open Animal <span>Stage</span></h1>
-  <p class="sub">Mapped brains play a strategy game against each other. A sister
-    project to <a href="https://github.com/Pr1nted/Open-Fly">Open Fly</a>, which
-    sat one fruit fly in front of
-    <a href="https://github.com/Pr1nted/Open-Doctrines">Open Doctrines</a> and
-    let it play.</p>
-  <p class="early"><i>◆</i> NOTHING PLAYS YET — THIS IS THE ROSTER</p>
+<canvas id="stage" tabindex="0" aria-label="3D scene: a room of stations, one per animal, each brain playing Open Doctrines on its own monitor. Drag to look, W A S D to move."></canvas>
 
+<header class="ident">
+  <h1>Open Animal <span>Stage</span> <em class="live"><i></i>LIVE</em></h1>
+  <p>Mapped brains playing Open Doctrines against each other, in one world. Every brain and the game run here, in your browser: every order comes from spikes computed on this machine.</p>
+</header>
+
+<section class="setup glass" id="setup" data-open="true" aria-label="Who plays">
+  <h2><button type="button" class="fold" id="setupFold" aria-expanded="true">Who plays next<i aria-hidden="true">&minus;</i></button></h2>
+  <div class="presets" id="presets"></div>
+  <div class="seatrows" id="seatRows"></div>
+  <button type="button" id="addSeat">Add an animal</button>
+  <label>Map <select id="mapSelect"><option>Loading maps&hellip;</option></select></label>
+  <label>Speed
+    <select id="speedSelect">
+      <option value="0">As fast as they think</option>
+      <option value="1200" selected>Watchable</option>
+      <option value="3000">Slow</option>
+    </select>
+  </label>
+  <label class="check" id="mouseRow" hidden><span><input type="checkbox" id="mouseOn" checked> The mouse watches the world</span></label>
+  <button type="button" class="go" id="startBtn">Start this game</button>
+  <p class="note" id="setupNote">A stage with two animals on it compares two mappings we wrote, not two animals. The fair opponent is the same brain with its wiring shuffled.</p>
   <h2>The roster</h2>
-  <div class="grid" id="roster"></div>
+  <div class="roster" id="roster"></div>
+</section>
 
-  <h2>What a seat needs</h2>
-  <table id="gates"></table>
+<nav class="views" id="views" aria-label="Camera views"></nav>
 
-  <footer>
-    <div>No connectome is distributed here. Each dataset is fetched from its own
-      source under its own terms.</div>
-    <div>A pairing compares two mappings we wrote, not two animals. See
-      PREREGISTRATION.md.</div>
-  </footer>
+<aside class="rail glass" aria-live="polite">
+  <div class="gamehead">
+    <span class="label" id="gameLabel">Getting ready</span>
+    <span class="turn" id="gameTurn">&mdash;</span>
+  </div>
+  <div class="board" id="board"></div>
+  <p class="fine" id="fine">Brains beside each animal: the female fly's neurons are where FlyWire put them; every other brain is laid out by role (senses in front, motor neurons behind), not by anatomy.</p>
+</aside>
+
+<div class="statusbar glass">
+  <div class="now"><strong id="nowTitle">Opening the room&hellip;</strong><span id="nowDetail">&nbsp;</span></div>
+  <div class="spark"><canvas id="spark" aria-label="Land held by each animal, turn by turn"></canvas></div>
 </div>
 
-<script>
-// The roster is DATA, read at load, not markup. Adding a species is a line in
-// data/roster.json and nothing else -- which is the difference between a page
-// that shows a roster and a page that has one hard-coded in two places.
-const GATES = [
-  ["The connectome is released", "and we can state its version"],
-  ["Every neuron has a sign", "or a defensible way to assign one"],
-  ["Sensory and motor sets exist", "named from the source, not chosen for a good result"],
-  ["The mapping is written down", "before the species plays"],
-  ["The model is validated", "against something that is not us"],
-];
+<div class="loading" id="loading"><div><strong>Opening the room</strong><p id="loadText">Loading&hellip;</p></div></div>
 
-function card(s) {
-  const el = document.createElement("div");
-  el.className = "card" + (s.seat === true ? " seat" : "");
-  const plays = s.seat === true ? ["plays", "Takes a seat"]
-              : s.seat === false ? ["nope", "Does not play"]
-              : ["watch", s.status === "verify" ? "Unverified" : "Candidate"];
-  el.innerHTML =
-    `<div class="name">${s.name}</div>` +
-    `<div class="detail">${s.detail}</div>` +
-    `<div class="n">${s.neurons ? s.neurons.toLocaleString() + " neurons" : "count unknown"}</div>` +
-    `<div class="detail">${s.dataset}</div>` +
-    `<span class="tag ${plays[0]}">${plays[1]}</span>` +
-    (s.why_no_seat ? `<div class="why">${s.why_no_seat}</div>` :
-     s.blocker ? `<div class="why">${s.blocker}</div>` : "");
-  return el;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script type="module">
+import { Encoder, choose, turnSeed, BRAIN_SEED, WINDOW_MS } from "./decide.js";
+
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fmt = new Intl.NumberFormat("en-US");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const TURNS = 120, MAX_SEATS = 6, SHUFFLE_SEED = 783;
+const SEAT_COLORS = ["#F2B84B", "#6FB7AE", "#E07A8F", "#A58BE0", "#A8D46F", "#6FA8E0"];
+
+// ---------------------------------------------------------------- workers
+function rpcWorker(url, classic) {
+  const w = new Worker(url, classic ? {} : { type: "module" });
+  let next = 1;
+  const waiting = new Map(), listeners = [];
+  w.onmessage = (e) => {
+    const m = e.data;
+    if (m.id && waiting.has(m.id)) { const { res, rej } = waiting.get(m.id); waiting.delete(m.id); m.error || m.type === "error" ? rej(new Error(m.error || m.message)) : res(m); }
+    else listeners.forEach((f) => f(m));
+  };
+  w.onerror = (e) => { const err = new Error(e.message || "worker failed"); for (const { rej } of waiting.values()) rej(err); waiting.clear(); listeners.forEach((f) => f({ type: "error", message: err.message })); };
+  return {
+    call: (type, payload = {}, transfer = []) => new Promise((res, rej) => { const id = next++; waiting.set(id, { res, rej }); w.postMessage({ type, id, ...payload }, transfer); }),
+    on: (f) => listeners.push(f),
+    post: (m) => w.postMessage(m),
+    kill: () => w.terminate(),
+  };
+}
+const game = rpcWorker("./game-worker.js");
+
+// One worker per brain, kept between games: a fly is 91 MB to fetch and nobody
+// should download it twice because the viewer added a worm.
+const brains = new Map();
+function brainFor(species, shuffled, onProgress) {
+  const key = `${species.id}|${shuffled ? "shuffled" : "real"}`;
+  if (brains.has(key)) return brains.get(key);
+  const w = rpcWorker("./brain-worker.js");
+  const loaded = new Promise((res, rej) => w.on((m) => {
+    if (m.type === "progress" && m.total) onProgress && onProgress(m.got / m.total);
+    if (m.type === "loaded") res(m);
+    if (m.type === "error") rej(new Error(m.message));
+  }));
+  w.post({ type: "load", base: `./species/${species.id}/`, shuffleSeed: shuffled ? SHUFFLE_SEED : null });
+  const entry = { w, loaded, key };
+  brains.set(key, entry);
+  loaded.catch(() => brains.delete(key));
+  return entry;
 }
 
-fetch("../data/roster.json")
-  .then(r => r.json())
-  .then(d => {
-    const host = document.getElementById("roster");
-    // Seats first, then the ones that might get there, then the ones that
-    // cannot -- so the page reads in the order somebody cares about.
-    const rank = s => s.seat === true ? 0 : s.seat === false ? 2 : 1;
-    d.species.slice().sort((a, b) => rank(a) - rank(b) || (b.neurons || 0) - (a.neurons || 0))
-             .forEach(s => host.appendChild(card(s)));
-  })
-  .catch(() => {
-    document.getElementById("roster").textContent =
-      "data/roster.json did not load — open this through a server, not as a file:// page.";
-  });
+// ---------------------------------------------------------------- the roster
+// data/roster.json is the one list; a species can take a seat when its row says
+// so AND its package is actually here. The page never offers what it cannot run.
+let roster = [];
+const available = new Map();   // id -> brain.json of a package that exists
+const label = (s) => `${s.name} · ${s.detail}`;
+const shortLabel = (s) => ({ drosophila_female: "Fly ♀", drosophila_male: "Fly ♂", drosophila_larva: "Fly larva", c_elegans_herm: "Worm ⚥", c_elegans_male: "Worm ♂", ciona_larva: "Sea squirt", zebrafish_larva: "Zebrafish", mouse_v1: "Mouse" }[s.id] || s.name);
+async function readRoster() {
+  roster = (await (await fetch("./roster.json")).json()).species;
+  await Promise.all(roster.map(async (s) => {
+    try {
+      const r = await fetch(`./species/${s.id}/brain.json`, { cache: "no-cache" });
+      if (r.ok && (r.headers.get("content-type") || "").includes("json")) available.set(s.id, await r.json());
+      else if (s.id === "mouse_v1") {
+        const m = await fetch(`./species/${s.id}/mouse.json`, { cache: "no-cache" });
+        if (m.ok && (m.headers.get("content-type") || "").includes("json")) available.set(s.id, await m.json());
+      }
+    } catch (_) { /* not packaged here */ }
+  }));
+  $("roster").innerHTML = roster.map((s) => {
+    const ok = available.has(s.id) && s.id !== "mouse_v1";
+    // A species that is here plays. One that is not says why -- and on the
+    // published site the usual reason is that its data may be used but not
+    // redistributed, so it has to be exported locally (tools/export_*.py).
+    const why = s.id === "mouse_v1" ? (available.has(s.id) ? "watches the world; cannot play" : "visual cortex only; not exported")
+      : s.blocker && available.has(s.id) ? s.blocker
+      : ok ? `${fmt.format(available.get(s.id).n)} neurons`
+      : s.redistribute === false ? `not served here: ${s.redistribute_why}. Export it locally to play it.`
+      : s.id === "zebrafish_larva" ? "needs a Fish1 export (a personal CAVE token)" : "not exported yet";
+    return `<div><b>${esc(label(s))}</b><span class="why${s.warning && ok ? " warn" : ""}">${esc(why)}${s.warning && ok ? " ⚠" : ""}</span></div>`;
+  }).join("");
+}
+// A species whose roster row names a blocker is shown, with the blocker, and not
+// offered: by PREREGISTRATION.md a seat whose senses reach no neuron never acts.
+const playable = () => roster.filter((s) => available.has(s.id) && s.id !== "mouse_v1" && !s.blocker);
 
-const t = document.getElementById("gates");
-t.innerHTML = "<tr><th>Gate</th><th>Meaning</th></tr>" +
-  GATES.map(([a, b]) => `<tr><td>${a}</td><td class="detail">${b}</td></tr>`).join("");
+// ---------------------------------------------------------------- the room
+const canvas = $("stage");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0c1113);
+scene.fog = new THREE.Fog(0x0c1113, 9, 22);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.02, 80);
+scene.add(new THREE.HemisphereLight(0x9fb8c8, 0x1a1410, 0.6));
+const fill = new THREE.DirectionalLight(0x8aa5ff, 0.45); fill.position.set(-3, 5, 4); scene.add(fill);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 30), new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 0.9 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const backWall = new THREE.Mesh(new THREE.PlaneGeometry(60, 8), new THREE.MeshStandardMaterial({ color: 0x1b2226, roughness: 0.95 }));
+backWall.position.set(0, 4, -2.6); backWall.receiveShadow = true; scene.add(backWall);
+
+const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o });
+const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m; };
+
+// ---------------------------------------------------------------- camera
+let VIEWS = {};
+let yaw = 0, pitch = 0, tween = null, activeView = "wide";
+const lookFrom = (pos, look) => { const d = new THREE.Vector3().subVectors(new THREE.Vector3(...look), new THREE.Vector3(...pos)).normalize(); return { yaw: Math.atan2(-d.x, -d.z), pitch: Math.asin(d.y) }; };
+const applyCamera = () => camera.rotation.set(pitch, yaw, 0, "YXZ");
+const pressView = (name) => { activeView = name; document.querySelectorAll(".views button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === name))); };
+function goTo(name, instant) {
+  const v = VIEWS[name]; if (!v) return;
+  const to = lookFrom(v.pos, v.look);
+  pressView(name);
+  if (instant || reduceMotion) { camera.position.set(...v.pos); yaw = to.yaw; pitch = to.pitch; applyCamera(); tween = null; return; }
+  let dy = to.yaw - yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  tween = { t: 0, p0: camera.position.clone(), p1: new THREE.Vector3(...v.pos), y0: yaw, y1: yaw + dy, q0: pitch, q1: to.pitch };
+}
+const keys = new Set();
+addEventListener("keydown", (e) => { if (!e.target.closest("select, input")) keys.add(e.code); });
+addEventListener("keyup", (e) => keys.delete(e.code));
+addEventListener("blur", () => keys.clear());
+const pointers = new Map(); let pinch = 0;
+canvas.addEventListener("pointerdown", (e) => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); canvas.focus(); });
+canvas.addEventListener("pointermove", (e) => {
+  const p = pointers.get(e.pointerId); if (!p) return;
+  if (pointers.size === 1) { yaw -= (e.clientX - p.x) * 0.004; pitch = Math.max(-1.45, Math.min(1.45, pitch - (e.clientY - p.y) * 0.004)); tween = null; pressView(""); applyCamera(); }
+  else if (pointers.size === 2) { const [a, b] = [...pointers.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch) moveForward((d - pinch) * 0.004); pinch = d; }
+  p.x = e.clientX; p.y = e.clientY;
+});
+const endPointer = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch = 0; };
+canvas.addEventListener("pointerup", endPointer); canvas.addEventListener("pointercancel", endPointer);
+canvas.addEventListener("wheel", (e) => { e.preventDefault(); moveForward(-e.deltaY * 0.002); }, { passive: false });
+function moveForward(a) { camera.position.addScaledVector(new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation), a); tween = null; pressView(""); }
+
+// ---------------------------------------------------------------- maps (Open Fly's, unchanged in what they compute)
+const MAPW = 800, MAPH = 400, WW = 2048, WH = 1024;
+const worldCanvas = document.createElement("canvas"); worldCanvas.width = WW; worldCanvas.height = WH;
+const wc = worldCanvas.getContext("2d"); const worldImage = wc.createImageData(WW, WH);
+const worldTex = new THREE.CanvasTexture(worldCanvas); worldTex.encoding = THREE.sRGBEncoding; worldTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const worldFrame = mesh(new THREE.BoxGeometry(4.3, 2.25, 0.04), std(0x14181b, { metalness: 0.4 }), 0, 3.35, -2.56);
+const worldPlane = new THREE.Mesh(new THREE.PlaneGeometry(4.16, 2.08), new THREE.MeshBasicMaterial({ map: worldTex, toneMapped: false }));
+worldPlane.position.set(0, 3.35, -2.535); scene.add(worldFrame, worldPlane);
+
+const mapCache = new Map();
+async function loadMap(path) {
+  if (mapCache.has(path)) return mapCache.get(path);
+  const { bytes } = await game.call("readMap", { path });
+  const files = fflate.unzipSync(bytes, { filter: (f) => ["countries.json", "provinces.json", "provinces.png"].includes(f.name) });
+  const dec = new TextDecoder();
+  const countries = JSON.parse(dec.decode(files["countries.json"]));
+  const provinces = JSON.parse(dec.decode(files["provinces.json"]));
+  const pngBlob = new Blob([files["provinces.png"]], { type: "image/png" });
+  const full = await createImageBitmap(pngBlob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+  const srcW = full.width, srcH = full.height; full.close();
+  let maxPid = 0; const count = new Map();
+  for (const [k, p] of Object.entries(provinces)) { maxPid = Math.max(maxPid, +k); count.set(p.country_id, (count.get(p.country_id) || 0) + 1); }
+  const world = await rasterIds(pngBlob, 0, 0, srcW, srcH, WW, WH, maxPid);
+  const seats = Object.values(countries).filter((c) => c.id < 60000 && count.get(c.id)).map((c) => ({ id: c.id, iso: c.iso_a3, name: c.name, provinces: count.get(c.id) }))
+    .sort((a, b) => b.provinces - a.provinces);
+  const info = { path, pngBlob, srcW, srcH, maxPid, countries, provinces, world, seats };
+  mapCache.set(path, info);
+  return info;
+}
+async function rasterIds(blob, sx, sy, sw, sh, w, h, maxPid) {
+  const bmp = await createImageBitmap(blob, Math.round(sx), Math.round(sy), Math.round(sw), Math.round(sh),
+    { resizeWidth: w, resizeHeight: h, resizeQuality: "pixelated", colorSpaceConversion: "none", premultiplyAlpha: "none" });
+  const c = new OffscreenCanvas(w, h); const x = c.getContext("2d", { willReadFrequently: true });
+  x.drawImage(bmp, 0, 0); bmp.close();
+  const px = x.getImageData(0, 0, w, h).data;
+  const ids = new Uint16Array(w * h);
+  for (let i = 0, o = 0; i < ids.length; i++, o += 4) { const id = (px[o] << 16) | (px[o + 1] << 8) | px[o + 2]; ids[i] = id <= maxPid ? id : 0; }
+  return ids;
+}
+async function seatCrop(map, cid) {
+  let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+  const own = new Uint8Array(map.maxPid + 1);
+  for (const [k, p] of Object.entries(map.provinces)) if (p.country_id === cid) own[+k] = 1;
+  for (let y = 0; y < WH; y++) for (let x = 0; x < WW; x++) { if (own[map.world[y * WW + x]]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+  const sxs = map.srcW / WW, sys = map.srcH / WH;
+  let cx, cy, w;
+  if (x1 < 0) { cx = map.srcW / 2; cy = map.srcH / 2; w = map.srcW; }
+  else { cx = ((x0 + x1) / 2) * sxs; cy = ((y0 + y1) / 2) * sys; w = Math.max((x1 - x0) * sxs * 1.9, (y1 - y0) * sys * 1.9 * 2, map.srcW * 0.14); }
+  w = Math.min(w, map.srcW, map.srcH * 2); const h = w / 2;
+  const sx = Math.min(Math.max(cx - w / 2, 0), map.srcW - w), sy = Math.min(Math.max(cy - h / 2, 0), map.srcH - h);
+  return rasterIds(map.pngBlob, sx, sy, w, h, MAPW, MAPH, map.maxPid);
+}
+const hexRGB = (h) => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+const hashRGB = (n) => { const h = (n * 2654435761) >>> 0; return [60 + (h & 127), 60 + ((h >> 8) & 127), 60 + ((h >> 16) & 127)]; };
+function b64bytes(s) { const raw = atob(s); const b = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) b[i] = raw.charCodeAt(i); return b; }
+// `edge` maps a seat's cid to the colour its border is drawn in, so one world
+// shows every animal's country at once.
+function paintInto(ids, W, H, image, owners, colorHex, edge) {
+  const colors = new Map(Object.entries(colorHex || {}).map(([cid, v]) => [+cid, hexRGB(v.hex)]));
+  const px = image.data;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x, pid = ids[i], cid = pid < owners.length ? owners[pid] : 0;
+    let r = 10, g = 15, b = 40;
+    if (pid && cid) { const c = colors.get(cid) || hashRGB(cid); r = c[0]; g = c[1]; b = c[2]; }
+    const rp = x + 1 < W ? ids[i + 1] : pid, dp = y + 1 < H ? ids[i + W] : pid;
+    const cr = rp < owners.length ? owners[rp] : 0, cd = dp < owners.length ? owners[dp] : 0;
+    if (pid && (cr !== cid || cd !== cid)) {
+      const hit = edge.get(cid) || edge.get(cr) || edge.get(cd);
+      if (hit) { r = hit[0]; g = hit[1]; b = hit[2]; } else { r *= 0.45; g *= 0.45; b *= 0.45; }
+    }
+    const o = i * 4; px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
+  }
+}
+
+// ---------------------------------------------------------------- the animals, generated
+// Built from primitives rather than modelled, as docs/stage.md asks: a change to
+// the roster must not need an artist. Each returns { root, animate(t, drive) }
+// where drive (0..1) is how much the brain just did.
+function stripedTexture(base, stripe, n, vertical) {
+  const cv = document.createElement("canvas"); cv.width = vertical ? 16 : 256; cv.height = vertical ? 256 : 16;
+  const c = cv.getContext("2d"); c.fillStyle = base; c.fillRect(0, 0, cv.width, cv.height); c.fillStyle = stripe;
+  for (let i = 0; i < n; i++) vertical ? c.fillRect(0, 22 + i * (220 / n), 16, 10) : c.fillRect(20 + i * (220 / n), 0, 9, 16);
+  const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; return t;
+}
+function ellipsoid(rx, ry, rz, mat, seg = 24) { const m = mesh(new THREE.SphereGeometry(1, seg, Math.round(seg * 0.7)), mat); m.scale.set(rx, ry, rz); return m; }
+
+function makeFly(male) {
+  const root = new THREE.Group();
+  const cuticle = std(0x6b4a26, { roughness: 0.45 });
+  const thorax = ellipsoid(0.028, 0.026, 0.034, cuticle); thorax.position.set(0, 0.05, 0);
+  const abdMat = std(0xffffff, { roughness: 0.45, map: stripedTexture("#5a391a", male ? "#1a0f07" : "#140c06", male ? 4 : 7, true) });
+  const abdomen = ellipsoid(0.026, 0.024, male ? 0.036 : 0.046, abdMat); abdomen.position.set(0, 0.045, 0.058); abdomen.rotation.x = -0.25;
+  if (male) { const tip = ellipsoid(0.02, 0.018, 0.014, std(0x120a05)); tip.position.set(0, 0.035, 0.09); root.add(tip); }
+  const head = ellipsoid(0.022, 0.02, 0.018, cuticle); head.position.set(0, 0.062, -0.042);
+  const eyeMat = std(0x7a0806, { roughness: 0.32 });
+  for (const s of [-1, 1]) { const e = ellipsoid(0.012, 0.015, 0.012, eyeMat); e.position.set(s * 0.017, 0.066, -0.044); root.add(e); }
+  const wingMat = new THREE.MeshStandardMaterial({ color: 0xd8e4ea, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, roughness: 0.2 });
+  for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.CircleGeometry(0.05, 24), wingMat); w.scale.set(0.45, 1, 1); w.rotation.set(-Math.PI / 2 + 0.12, 0, s * 0.35); w.position.set(s * 0.022, 0.074, 0.045); root.add(w); }
+  const legMat = std(0x2a1c0e);
+  const legs = [];
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
+    const pivot = new THREE.Group(); pivot.position.set(s * 0.02, 0.04, -0.02 + k * 0.022);
+    const leg = mesh(new THREE.CylinderGeometry(0.0025, 0.002, 0.07, 6), legMat, 0, -0.022, 0); leg.rotation.z = s * 0.9; leg.position.x = s * 0.022;
+    pivot.add(leg); root.add(pivot); if (k === 0) legs.push(pivot);
+  }
+  root.add(thorax, abdomen, head);
+  root.scale.setScalar(2.4);
+  return { root, animate(t, drive) {
+    legs.forEach((p, i) => { p.rotation.x = drive * 0.5 * Math.max(0, Math.sin(t * 14 + i * Math.PI)); });
+    head.rotation.y = Math.sin(t * 0.7) * 0.08;
+  } };
+}
+function makeLarva() {
+  const root = new THREE.Group(), segs = [];
+  const mat = std(0xf1ead8, { roughness: 0.35, transparent: true, opacity: 0.92 });
+  for (let i = 0; i < 12; i++) { const r = 0.016 * (1 - Math.abs(i - 6) / 12) + 0.006; const s = ellipsoid(r, r * 0.85, 0.014, mat, 16); s.position.set(0, r, -0.08 + i * 0.015); root.add(s); segs.push(s); }
+  const hook = ellipsoid(0.004, 0.004, 0.006, std(0x1b120a)); hook.position.set(0, 0.012, -0.093); root.add(hook);
+  root.scale.setScalar(2.2);
+  return { root, animate(t, drive) { segs.forEach((s, i) => { s.scale.z = 0.014 * (1 + (0.15 + drive * 0.4) * Math.sin(t * 5 - i * 0.6)); }); } };
+}
+function makeWorm(male) {
+  const root = new THREE.Group(), balls = [];
+  const mat = std(0xe8e2d0, { roughness: 0.3, transparent: true, opacity: 0.85 });
+  for (let i = 0; i < 36; i++) { const r = 0.006 * Math.sin(Math.PI * (i + 1) / 37) + 0.0015; const b = ellipsoid(r, r, r, mat, 10); root.add(b); balls.push(b); }
+  if (male) { const fan = new THREE.Mesh(new THREE.CircleGeometry(0.008, 16), mat); fan.rotation.x = -Math.PI / 2; root.add(fan); balls.fan = fan; }
+  root.scale.setScalar(2.4);
+  return { root, animate(t, drive) {
+    const speed = 2 + drive * 6;
+    balls.forEach((b, i) => { const u = i / 35; b.position.set(0.035 * Math.sin(u * 5 - t * speed), 0.008, -0.07 + u * 0.14); });
+    if (balls.fan) balls.fan.position.copy(balls[35].position);
+  } };
+}
+function makeCiona() {
+  const root = new THREE.Group(), tail = [];
+  const mat = std(0xe9d9b8, { roughness: 0.3, transparent: true, opacity: 0.85 });
+  const trunk = ellipsoid(0.02, 0.018, 0.026, mat); trunk.position.set(0, 0.02, -0.04); root.add(trunk);
+  const ocellus = ellipsoid(0.004, 0.004, 0.004, std(0x1d140e)); ocellus.position.set(0.004, 0.03, -0.045); root.add(ocellus);
+  for (let i = 0; i < 20; i++) { const r = 0.006 * (1 - i / 24); const b = ellipsoid(r, r * 0.6, r, mat, 10); root.add(b); tail.push(b); }
+  root.scale.setScalar(2.6);
+  return { root, animate(t, drive) { const f = 4 + drive * 10; tail.forEach((b, i) => { const u = i / 19; b.position.set(0.02 * u * Math.sin(u * 4 - t * f), 0.02, -0.015 + u * 0.1); }); } };
+}
+function makeFish() {
+  const root = new THREE.Group(), body = [];
+  const mat = std(0xd9d2c0, { roughness: 0.25, transparent: true, opacity: 0.7 });
+  const stripeMat = std(0x1f1a17, { roughness: 0.6 });
+  for (let i = 0; i < 14; i++) { const u = i / 13; const r = 0.03 * (1 - u * 0.8) * (u < 0.15 ? 0.7 + u * 2 : 1); const s = ellipsoid(r * 0.7, r, 0.02, mat, 14); root.add(s); body.push({ s, u }); }
+  const stripe = [];
+  for (let i = 2; i < 13; i += 2) { const d = ellipsoid(0.004, 0.003, 0.008, stripeMat, 8); root.add(d); stripe.push({ d, u: i / 13 }); }
+  const yolk = ellipsoid(0.018, 0.016, 0.022, std(0xe5c88a, { transparent: true, opacity: 0.8 })); root.add(yolk);
+  const eyes = [-1, 1].map((s) => { const e = ellipsoid(0.013, 0.013, 0.011, std(0x0c0c10, { roughness: 0.15, metalness: 0.3 })); root.add(e); return { e, s }; });
+  const fin = new THREE.Mesh(new THREE.CircleGeometry(0.03, 20), new THREE.MeshStandardMaterial({ color: 0xe8e4da, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false })); fin.scale.set(0.3, 1, 1); root.add(fin);
+  root.scale.setScalar(2.6);
+  return { root, animate(t, drive) {
+    const f = 6 + drive * 18, a = 0.012 + drive * 0.02;
+    const wave = (u) => a * u * u * Math.sin(u * 5 - t * f);
+    body.forEach(({ s, u }) => s.position.set(wave(u), 0, -0.07 + u * 0.19));
+    stripe.forEach(({ d, u }) => d.position.set(wave(u), 0.022 * (1 - u * 0.7), -0.07 + u * 0.19));
+    yolk.position.set(wave(0.2), -0.016, -0.03);
+    eyes.forEach(({ e, s }) => e.position.set(s * 0.02, 0.006, -0.06));
+    fin.position.set(wave(1), 0, 0.125); fin.rotation.y = Math.PI / 2 + wave(1) * 10;
+    root.position.y = Math.sin(t * 0.8) * 0.01;
+  } };
+}
+function makeMouse() {
+  const root = new THREE.Group();
+  const fur = std(0x8d8478, { roughness: 0.9 });
+  const body = ellipsoid(0.05, 0.042, 0.075, fur); body.position.set(0, 0.042, 0.02);
+  const head = ellipsoid(0.03, 0.03, 0.04, fur); head.position.set(0, 0.07, -0.06);
+  for (const s of [-1, 1]) {
+    const ear = ellipsoid(0.02, 0.022, 0.006, std(0xc9a7a0)); ear.position.set(s * 0.024, 0.1, -0.05); root.add(ear);
+    const eye = ellipsoid(0.006, 0.006, 0.006, std(0x050505, { roughness: 0.1 })); eye.position.set(s * 0.018, 0.078, -0.092); root.add(eye);
+  }
+  const nose = ellipsoid(0.006, 0.005, 0.006, std(0xd79a95)); nose.position.set(0, 0.066, -0.1);
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.02, 0.09), new THREE.Vector3(0.04, 0.005, 0.15), new THREE.Vector3(0.1, 0.004, 0.17), new THREE.Vector3(0.15, 0.004, 0.13)]), 24, 0.004, 6), std(0xc9a7a0));
+  root.add(body, head, nose, tail);
+  root.scale.setScalar(1.6);
+  return { root, animate(t) { head.rotation.x = Math.sin(t * 1.3) * 0.05; nose.position.y = 0.066 + Math.sin(t * 11) * 0.0015; } };
+}
+const ANIMALS = { drosophila_female: () => makeFly(false), drosophila_male: () => makeFly(true), drosophila_larva: makeLarva, c_elegans_herm: () => makeWorm(false), c_elegans_male: () => makeWorm(true), ciona_larva: makeCiona, zebrafish_larva: makeFish, mouse_v1: makeMouse };
+const HOUSING = { drosophila_female: "keyboard", drosophila_male: "keyboard", drosophila_larva: "keyboard", c_elegans_herm: "dish", c_elegans_male: "dish", ciona_larva: "dish", zebrafish_larva: "tank", mouse_v1: "desk" };
+
+// ---------------------------------------------------------------- a brain beside each animal
+const BRAIN_SHAPE = { c_elegans_herm: [1, 0.18, 0.18], c_elegans_male: [1, 0.18, 0.18], ciona_larva: [1, 0.3, 0.3], drosophila_larva: [0.8, 0.5, 0.5], zebrafish_larva: [1, 0.45, 0.4] };
+function brainPoints(meta, positionsBuf) {
+  const n = meta.n;
+  let xyz, kind;
+  if (positionsBuf) {
+    const dv = new DataView(positionsBuf); const m = dv.getUint32(8, true);
+    if (m !== n) throw new Error("positions.bin does not match brain.json");
+    xyz = new Float32Array(positionsBuf.slice(16, 16 + n * 12)); kind = new Uint8Array(positionsBuf.slice(16 + n * 12, 16 + n * 13));
+  } else {
+    // LAYOUT, NOT ANATOMY: a species with no exported soma positions is drawn
+    // by role, senses in front and motor neurons behind, and the page says so.
+    const shape = BRAIN_SHAPE[meta.species] || [0.8, 0.55, 0.5];
+    kind = new Uint8Array(n).fill(2);
+    for (const idx of Object.values(meta.sensory)) for (const i of idx) kind[i] = 3;
+    for (const i of motorOf(meta)) kind[i] = 4;
+    xyz = new Float32Array(n * 3);
+    let a = 12345;
+    const r = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+    for (let i = 0; i < n; i++) {
+      let x, y, z; do { x = r() * 2 - 1; y = r() * 2 - 1; z = r() * 2 - 1; } while (x * x + y * y + z * z > 1);
+      if (kind[i] === 3) x = 0.55 + Math.abs(x) * 0.45; else if (kind[i] === 4) x = -0.55 - Math.abs(x) * 0.45; else x *= 0.8;
+      xyz[i * 3] = x * shape[0]; xyz[i * 3 + 1] = y * shape[1]; xyz[i * 3 + 2] = z * shape[2];
+    }
+  }
+  // Fit to the pedestal whatever the source's units were.
+  let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < n; i++) { if (kind[i] === 255) continue; for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], xyz[i * 3 + k]); hi[k] = Math.max(hi[k], xyz[i * 3 + k]); } }
+  const c = lo.map((l, k) => (l + hi[k]) / 2), span = Math.max(...hi.map((h, k) => h - lo[k])) || 1;
+  for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) xyz[i * 3 + k] = ((xyz[i * 3 + k] - c[k]) / span) * 0.5;
+  return { xyz, kind, fromData: !!positionsBuf };
+}
+const motorOf = (meta) => meta.motor || meta.dn || [];
+function buildBrainView(meta, pts, color) {
+  const n = meta.n, geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pts.xyz, 3));
+  const kind = new Float32Array(n); for (let i = 0; i < n; i++) kind[i] = pts.kind[i];
+  geo.setAttribute("aKind", new THREE.BufferAttribute(kind, 1));
+  const activity = new Float32Array(n), actAttr = new THREE.BufferAttribute(activity, 1); actAttr.setUsage(THREE.DynamicDrawUsage); geo.setAttribute("aAct", actAttr);
+  // Small brains get bigger points, so 177 neurons read as a brain and not as dust.
+  const size = n < 1000 ? 9 : n < 10000 ? 4 : 1.6;
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uScale: { value: 1 }, uPixel: { value: renderer.getPixelRatio() }, uSize: { value: size }, uSeat: { value: new THREE.Color(color) } },
+    vertexShader: `attribute float aKind; attribute float aAct; uniform float uScale; uniform float uPixel; uniform float uSize; uniform vec3 uSeat; varying vec3 vColor; varying float vAlpha;
+      void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); float hide = step(254.5, aKind);
+        vec3 base = vec3(0.30, 0.62, 0.58); float a = 0.12;
+        if (abs(aKind - 1.0) < 0.5) { base = vec3(0.30, 0.48, 0.58); a = 0.07; }
+        if (abs(aKind - 3.0) < 0.5) { base = vec3(0.50, 0.82, 0.68); a = 0.2; }
+        if (abs(aKind - 4.0) < 0.5) { base = uSeat; a = 0.8; }
+        vColor = mix(base, vec3(1.0, 0.95, 0.80), clamp(aAct, 0.0, 1.0)); vAlpha = (a + aAct * 0.95) * (1.0 - hide);
+        float s = (aKind > 3.5 && aKind < 4.5 ? uSize * 1.6 : uSize) + aAct * 5.0; gl_PointSize = s * uPixel * uScale / max(0.05, -mv.z); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying vec3 vColor; varying float vAlpha; void main() { vec2 d = gl_PointCoord - 0.5; float r = dot(d, d); if (r > 0.25) discard; gl_FragColor = vec4(vColor, vAlpha * smoothstep(0.25, 0.0, r)); }`,
+  });
+  const points = new THREE.Points(geo, mat); points.frustumCulled = false;
+  const holder = new THREE.Group(); holder.add(points);
+  return { holder, mat, activity, actAttr };
+}
+
+// ---------------------------------------------------------------- stations
+// One per seat, in a row facing the world on the back wall. Each has its own
+// monitor showing that animal's country, and its brain on a pedestal beside it.
+const SPACING = 2.7;
+let stations = [];
+const stationRoot = new THREE.Group(); scene.add(stationRoot);
+function makeNameplate(text, sub, color) {
+  const cv = document.createElement("canvas"); cv.width = 512; cv.height = 128; const c = cv.getContext("2d");
+  c.fillStyle = "#0f1416"; c.fillRect(0, 0, 512, 128); c.fillStyle = color; c.fillRect(0, 0, 10, 128);
+  c.fillStyle = "#EDE6D6"; c.font = "600 44px Figtree, sans-serif"; c.textBaseline = "top"; c.fillText(text, 30, 16);
+  c.fillStyle = "#8F9A97"; c.font = "500 28px Figtree, sans-serif"; c.fillText(sub, 30, 74);
+  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.15), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  return { m, cv, c, tex };
+}
+function buildStation(seat, i, n) {
+  const g = new THREE.Group(); g.position.set((i - (n - 1) / 2) * SPACING, 0, 0);
+  const housing = HOUSING[seat.species.id] || "desk";
+  const wood = std(0x3a2a1c, { roughness: 0.7 }), metal = std(0x1a2024, { roughness: 0.4, metalness: 0.6 });
+  const deskTop = housing === "tank" ? 0.72 : 0.75;
+  if (housing === "tank") {
+    g.add(mesh(new THREE.BoxGeometry(1.5, deskTop, 0.75), metal, 0, deskTop / 2, 0));
+  } else {
+    g.add(mesh(new THREE.BoxGeometry(1.7, 0.05, 0.85), wood, 0, deskTop - 0.025, 0));
+    for (const [x, z] of [[-0.78, -0.35], [0.78, -0.35], [-0.78, 0.35], [0.78, 0.35]]) g.add(mesh(new THREE.BoxGeometry(0.05, deskTop - 0.05, 0.05), metal, x, (deskTop - 0.05) / 2, z));
+  }
+  // The monitor: that seat's own game, drawn every turn.
+  const scv = document.createElement("canvas"); scv.width = 1280; scv.height = 720;
+  const stex = new THREE.CanvasTexture(scv); stex.encoding = THREE.sRGBEncoding; stex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.45), new THREE.MeshBasicMaterial({ map: stex, toneMapped: false }));
+  const animal = ANIMALS[seat.species.id] ? ANIMALS[seat.species.id]() : makeFly(false);
+  const lamp = new THREE.PointLight(0xffb877, 0.9, 3, 2);
+  if (housing === "tank") {
+    // A tank with a screen on the glass, which is the fish's whole station.
+    const glass = new THREE.MeshStandardMaterial({ color: 0xa8d8e0, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.62, 0.55), glass); tank.position.set(0, deskTop + 0.31, 0); g.add(tank);
+    const water = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.54, 0.53), new THREE.MeshStandardMaterial({ color: 0x2d6e7a, transparent: true, opacity: 0.18, depthWrite: false }));
+    water.position.set(0, deskTop + 0.27, 0); g.add(water);
+    g.add(mesh(new THREE.BoxGeometry(1.2, 0.03, 0.55), std(0xcfbf9a, { roughness: 1 }), 0, deskTop + 0.015, 0));
+    screen.scale.setScalar(0.62); screen.position.set(0, deskTop + 0.32, -0.26); g.add(screen);
+    animal.root.position.set(0, deskTop + 0.3, 0.02); animal.root.rotation.y = 0;
+    const tankLight = new THREE.PointLight(0x9fe0ff, 0.8, 2, 2); tankLight.position.set(0, deskTop + 0.75, 0.1); g.add(tankLight);
+  } else {
+    g.add(mesh(new THREE.BoxGeometry(0.84, 0.49, 0.04), metal, 0, deskTop + 0.42, -0.3));
+    g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 10), metal, 0, deskTop + 0.1, -0.3));
+    g.add(mesh(new THREE.BoxGeometry(0.28, 0.015, 0.16), metal, 0, deskTop + 0.008, -0.3));
+    screen.position.set(0, deskTop + 0.42, -0.277); g.add(screen);
+    if (housing === "keyboard") {
+      g.add(mesh(new THREE.BoxGeometry(0.46, 0.022, 0.15), std(0x202428), 0, deskTop + 0.011, 0.02));
+      animal.root.position.set(0, deskTop + 0.022, 0.03);
+    } else if (housing === "dish") {
+      const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.025, 48, 1, true), new THREE.MeshStandardMaterial({ color: 0xcfe6ea, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
+      dish.position.set(0, deskTop + 0.0125, 0.05); g.add(dish);
+      g.add(mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.008, 48), std(0xd9c9a0, { roughness: 1, transparent: true, opacity: 0.9 }), 0, deskTop + 0.004, 0.05));
+      animal.root.position.set(0, deskTop + 0.008, 0.05);
+    } else {
+      animal.root.position.set(0, deskTop, 0.12);
+    }
+  }
+  g.add(animal.root);
+  lamp.position.set(0.5, deskTop + 0.9, 0.3); g.add(lamp);
+  // The brain on its pedestal, to the animal's left.
+  const pedestal = mesh(new THREE.CylinderGeometry(0.025, 0.04, 1.05, 12), metal, -1.05, 0.525, 0.1);
+  const disc = mesh(new THREE.CylinderGeometry(0.24, 0.25, 0.02, 48), std(0x151c1f, { metalness: 0.3 }), -1.05, 1.06, 0.1);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.004, 8, 96), new THREE.MeshBasicMaterial({ color: seat.color, transparent: true, opacity: 0.7 }));
+  ring.rotation.x = Math.PI / 2; ring.position.set(-1.05, 1.072, 0.1);
+  const haze = new THREE.PointLight(seat.color, 0.35, 1.4, 2); haze.position.set(-1.05, 1.35, 0.1);
+  g.add(pedestal, disc, ring, haze);
+  const plate = makeNameplate(seat.title, seat.subtitle, seat.color);
+  plate.m.position.set(0, deskTop - 0.07, 0.43); if (housing === "tank") plate.m.position.set(0, deskTop - 0.12, 0.38);
+  g.add(plate.m);
+  stationRoot.add(g);
+  const st = { g, screen: { cv: scv, c: scv.getContext("2d"), tex: stex }, animal, haze, drive: 0, brain: null, plate, deskTop };
+  return st;
+}
+function attachBrain(st, meta, pts, color) {
+  const bv = buildBrainView(meta, pts, color);
+  bv.holder.position.set(-1.05, 1.36, 0.1);
+  st.g.add(bv.holder); st.brain = bv;
+  resize();
+}
+function clearStations() {
+  for (const st of stations) { stationRoot.remove(st.g); st.g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); }); }
+  stations = [];
+}
+function layoutViews(seats) {
+  const n = seats.length + (G.mouse ? 1 : 0), width = Math.max(1, n) * SPACING;
+  VIEWS = { wide: { pos: [0, 2.4 + width * 0.12, 2.6 + width * 0.8], look: [0, 1.3, -1.2] }, world: { pos: [0, 2.9, 1.9], look: [0, 3.2, -2.5] } };
+  seats.forEach((s, i) => {
+    const x = (i - (n - 1) / 2) * SPACING;
+    VIEWS[`seat${i}`] = HOUSING[s.species.id] === "tank"
+      ? { pos: [x + 0.55, 1.45, 1.15], look: [x - 0.05, 1.0, -0.1] }
+      : { pos: [x + 0.7, 1.55, 1.05], look: [x - 0.15, 0.95, -0.25] };
+    VIEWS[`brain${i}`] = { pos: [x - 0.6, 1.55, 0.95], look: [x - 1.05, 1.3, 0.1] };
+  });
+  if (G.mouse) {
+    const x = (seats.length - (n - 1) / 2) * SPACING;
+    VIEWS.mouse = { pos: [x + 0.7, 1.55, 1.05], look: [x - 0.15, 0.95, -0.25] };
+    VIEWS.brainmouse = { pos: [x - 0.6, 1.55, 0.95], look: [x - 1.05, 1.3, 0.1] };
+  }
+  $("views").innerHTML = `<button type="button" data-view="wide">Everyone</button><button type="button" data-view="world">The world</button>` +
+    seats.map((s, i) => `<button type="button" data-view="seat${i}"><i style="background:${s.color}"></i>${esc(shortLabel(s.species))}${s.shuffled ? " (shuffled)" : ""}</button>`).join("") +
+    (G.mouse ? `<button type="button" data-view="mouse"><i style="background:${MOUSE_COLOR}"></i>Mouse (watching)</button>` : "");
+  document.querySelectorAll(".views button").forEach((b) => b.addEventListener("click", () => {
+    // A second press on a seat swaps between the animal and its brain.
+    const v = b.dataset.view;
+    const twin = v === "mouse" ? "brainmouse" : v.replace("seat", "brain");
+    goTo((v.startsWith("seat") || v === "mouse") && activeView === v ? twin : v);
+    if (activeView === twin) b.setAttribute("aria-pressed", "true");
+  }));
+}
+
+// ---------------------------------------------------------------- the mouse, who watches
+// Not a seat. Its station is shown the world map each turn and its cortex's
+// predicted response lights its neurons; nothing it does reaches the game.
+const MOUSE_COLOR = "#C9C3B6";
+let mouseWorker = null, mouseLoaded = null;
+function buildMouse(n) {
+  const species = roster.find((s) => s.id === "mouse_v1");
+  const m = { species, color: MOUSE_COLOR, title: "Mouse · visual cortex", subtitle: "watches the world; does not play", busy: false, looks: 0, state: "load" };
+  m.st = buildStation(m, n, n + 1); stations.push(m.st);
+  m.frame = document.createElement("canvas"); m.frame.width = 256; m.frame.height = 144;
+  if (!mouseWorker) {
+    mouseWorker = rpcWorker("./mouse-worker.js", true);
+    mouseLoaded = new Promise((res, rej) => mouseWorker.on((msg) => { if (msg.type === "loaded") res(msg); if (msg.type === "error") rej(new Error(msg.message)); }));
+    mouseWorker.post({ type: "load", base: "./species/mouse_v1/" });
+  }
+  mouseLoaded.then(({ meta, ep }) => {
+    m.meta = meta; m.ep = ep; m.state = "ready";
+    // Where the two-photon stack put each recorded soma; the cells matched to
+    // the EM reconstruction are drawn as the sensory kind so they stand out.
+    const n = meta.n, xyz = new Float32Array(n * 3), kind = new Uint8Array(n).fill(2);
+    meta.units.soma_2p_um.forEach((p, i) => { xyz[i * 3] = p[0]; xyz[i * 3 + 1] = -p[2]; xyz[i * 3 + 2] = p[1]; if (meta.units.nucleus_id[i] != null) kind[i] = 3; });
+    attachBrain(m.st, { n, sensory: {}, motor: [] }, (() => { const pts = brainPoints({ n, sensory: {}, motor: [], species: "mouse_v1" }, null); pts.xyz = xyz; pts.kind = kind; return normalisePts(pts, n); })(), MOUSE_COLOR);
+    drawMouseMonitor(m); showBoard();
+  }).catch((e) => { m.state = "fault"; m.stateLine = String(e.message || e).slice(0, 80); drawMouseMonitor(m); showBoard(); });
+  return m;
+}
+function normalisePts(pts, n) {
+  const { xyz } = pts; const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], xyz[i * 3 + k]); hi[k] = Math.max(hi[k], xyz[i * 3 + k]); }
+  const c = lo.map((l, k) => (l + hi[k]) / 2), span = Math.max(...hi.map((h, k) => h - lo[k])) || 1;
+  for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) xyz[i * 3 + k] = ((xyz[i * 3 + k] - c[k]) / span) * 0.5;
+  return pts;
+}
+function mouseLook() {
+  const m = G.mouse; if (!m || m.state !== "ready" || m.busy) return;
+  // What it is shown: the world, letterboxed to the twin's 256 x 144, in grey.
+  const c = m.frame.getContext("2d", { willReadFrequently: true });
+  c.fillStyle = "#000"; c.fillRect(0, 0, 256, 144); c.drawImage(worldCanvas, 0, 8, 256, 128);
+  const px = c.getImageData(0, 0, 256, 144).data, f = new Float32Array(256 * 144);
+  for (let i = 0; i < f.length; i++) { const o = i * 4; const y = (0.299 * px[o] + 0.587 * px[o + 1] + 0.114 * px[o + 2]) / 255; f[i] = y; px[o] = px[o + 1] = px[o + 2] = y * 255; }
+  c.putImageData(new ImageData(px, 256, 144), 0, 0);
+  m.busy = true; drawMouseMonitor(m); showBoard();
+  mouseWorker.call("look", { frame: f, frames: 15 }, [f.buffer]).then((r) => {
+    m.busy = false; m.looks++; m.ms = r.ms; m.ep = r.ep;
+    const a = m.st.brain.activity; let above = 0;
+    for (let u = 0; u < r.response.length; u++) { const v = r.response[u]; if (v > 1) above++; a[u] = Math.max(a[u], Math.min(1, Math.max(0, (v - 0.8) * 0.9))); }
+    m.above = above; m.st.drive = Math.min(1, above / (0.3 * r.response.length));
+    drawMouseMonitor(m); showBoard();
+  }).catch((e) => { m.busy = false; m.state = "fault"; m.stateLine = String(e.message || e).slice(0, 80); showBoard(); });
+}
+function drawMouseMonitor(m) {
+  const { c, cv, tex } = m.st.screen, W = cv.width, H = cv.height;
+  c.fillStyle = "#0c0e14"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#161a24"; c.fillRect(0, 0, W, 48); c.textBaseline = "top";
+  c.fillStyle = MOUSE_COLOR; c.font = "600 22px Figtree, sans-serif"; c.fillText("WHAT THE MOUSE IS SHOWN", 16, 13);
+  c.imageSmoothingEnabled = false; c.drawImage(m.frame, 0, 48, 1280, 720);
+  c.fillStyle = "rgba(8,10,14,.78)"; c.fillRect(0, H - 64, W, 64);
+  c.fillStyle = "#E6E8EE"; c.font = "500 19px Figtree, sans-serif";
+  const line = m.state === "fault" ? `the cortex model could not run: ${m.stateLine}` : m.state === "load" ? "loading the cortex model (35 MB)…"
+    : m.busy ? "looking…" : m.looks ? `${fmt.format(m.above)} of ${fmt.format(m.meta.n)} recorded neurons predicted above their usual level` : "waiting for the first map";
+  c.fillText(line, 18, H - 50);
+  c.fillStyle = "#8C92A0"; c.font = "500 15px Figtree, sans-serif"; c.fillText("predictions of a model fitted to this mouse's recordings (MICrONS digital twin), not recordings and not a player", 18, H - 24);
+  tex.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------- each monitor
+function drawMonitor(seat) {
+  const { c, cv, tex } = seat.st.screen, W = cv.width, H = cv.height, t = seat.turns[seat.turns.length - 1];
+  c.fillStyle = "#0c0e14"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#161a24"; c.fillRect(0, 0, W, 48);
+  c.textBaseline = "top"; c.fillStyle = seat.color; c.font = "600 22px Figtree, sans-serif"; c.fillText("OPEN DOCTRINES", 16, 13);
+  c.fillStyle = "#E6E8EE"; c.font = "500 19px Figtree, sans-serif";
+  c.fillText(`${seat.country ? seat.country.name : "…"}  ·  ${seat.title}${seat.shuffled ? " (shuffled wiring)" : ""}`, 220, 14);
+  if (seat.conventionNote) {
+    c.fillStyle = "#E0624F"; c.font = "500 15px Figtree, sans-serif";
+    c.fillText("⚠ " + seat.conventionNote.slice(0, 120), 16, H - 22);
+  }
+  if (seat.crop && seat.lastOwners) c.drawImage(seat.mapCanvas, 0, 48, 860, 430);
+  c.strokeStyle = "#323846"; c.lineWidth = 2; c.strokeRect(0, 48, 860, 430);
+  c.fillStyle = "#161a24"; c.fillRect(860, 48, W - 860, H);
+  c.fillStyle = seat.color; c.font = "600 20px Figtree, sans-serif"; c.fillText("ITS ORDERS", 880, 64);
+  let y = 98;
+  if (t) {
+    if (!t.orders.length) { c.fillStyle = "#8C92A0"; c.font = "500 18px Figtree, sans-serif"; c.fillText(t.fault ? "(its brain faulted)" : "(holds)", 880, y); }
+    t.orders.slice(0, 9).forEach(([m, name]) => { c.fillStyle = "#8C92A0"; c.font = "500 14px Figtree, sans-serif"; c.fillText(m, 880, y + 3); c.fillStyle = "#E6E8EE"; c.font = "500 18px Figtree, sans-serif"; c.fillText(name, 970, y); y += 28; });
+    c.fillStyle = seat.color; c.font = "600 20px Figtree, sans-serif"; c.fillText("ITS BRAIN", 880, 380);
+    c.fillStyle = "#E6E8EE"; c.font = "500 17px Figtree, sans-serif";
+    c.fillText(`${fmt.format(t.motor)} motor spikes`, 880, 412);
+    c.fillText(`${fmt.format(t.fired)} of ${fmt.format(seat.meta.n)} neurons fired`, 880, 438);
+    c.fillStyle = "#8C92A0"; c.fillText(`thought for ${(t.ms / 1000).toFixed(2)} s`, 880, 464);
+    ["reward", "harm", "reserve", "threat"].forEach((k, i) => {
+      const yy = 500 + i * 46, v = t.bySignal[k] || 0, carried = seat.carriers[k];
+      c.fillStyle = "#8C92A0"; c.font = "500 15px Figtree, sans-serif"; c.fillText(`${k}${carried ? ` → ${carried}` : " (no sense carries it)"}`, 880, yy);
+      c.fillStyle = "#282e3c"; c.fillRect(880, yy + 20, 380, 9); c.fillStyle = carried ? "#6EAAE6" : "#3a3f4a"; c.fillRect(880, yy + 20, 380 * Math.min(1, v / 200), 9);
+    });
+    const p = t.pos;
+    [["Land", `${p.share.toFixed(2)}%`], ["Army", fmt.format(p.army)], ["Treasury", fmt.format(Math.round(p.treasury))], ["Wars", p.war.length ? p.war.join(" ").slice(0, 22) : "none"]].forEach(([k, v], i) => {
+      c.fillStyle = "#8C92A0"; c.font = "500 15px Figtree, sans-serif"; c.fillText(k, 18 + i * 215, 492);
+      c.fillStyle = k === "Wars" && p.war.length ? "#DC463C" : "#E6E8EE"; c.font = "600 19px 'JetBrains Mono', monospace"; c.fillText(v, 18 + i * 215, 514);
+    });
+    c.fillStyle = "#161a24"; c.fillRect(16, 556, 828, 150);
+    const vals = seat.turns.map((q) => q.pos.share), hi = Math.max(...vals) * 1.15, lo = Math.min(...vals) * 0.85;
+    c.strokeStyle = seat.color; c.lineWidth = 3; c.beginPath();
+    vals.forEach((v, i) => { const x = 26 + 808 * (i / (TURNS - 1)), yy = 696 - 120 * ((v - lo) / ((hi - lo) || 1)); i ? c.lineTo(x, yy) : c.moveTo(x, yy); }); c.stroke();
+  }
+  if (seat.state === "dead" || seat.state === "fault") {
+    c.fillStyle = "rgba(8, 10, 14, 0.8)"; c.fillRect(140, 190, 580, 150); c.strokeStyle = "#E0624F"; c.lineWidth = 2; c.strokeRect(140, 190, 580, 150);
+    c.textAlign = "center"; c.fillStyle = "#E0624F"; c.font = "700 44px 'Big Shoulders Display', sans-serif"; c.fillText(seat.state === "dead" ? "WIPED OUT" : "BRAIN FAULTED", 430, 218);
+    c.fillStyle = "#E6E8EE"; c.font = "500 19px Figtree, sans-serif"; c.fillText(seat.stateLine || "", 430, 288); c.textAlign = "left";
+  }
+  tex.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------- the rail and the spark
+function showBoard() {
+  $("gameTurn").textContent = G.turn != null ? `Turn ${G.turn + 1} of ${TURNS}` : "—";
+  $("gameLabel").textContent = G.meta ? `Game ${G.meta.game} · ${G.meta.mapName} · seed ${G.meta.seed}${odVersion ? ` · Open Doctrines ${odVersion}` : ""}` : "Getting ready";
+  $("board").innerHTML = G.seats.map((s) => {
+    const t = s.turns[s.turns.length - 1], p = t && t.pos;
+    const d = p && s.start != null ? p.share - s.start : 0;
+    const state = s.state === "dead" ? `<span class="state dead">wiped out</span>` : s.state === "fault" ? `<span class="state fault">brain faulted</span>`
+      : s.state === "think" ? `<span class="state think">thinking…</span>` : s.state === "load" ? `<span class="state think">${esc(s.stateLine || "loading")}</span>` : `<span class="state">${t ? `${(t.ms / 1000).toFixed(2)} s` : ""}</span>`;
+    return `<div class="card" style="--c:${s.color}"><div class="who"><strong>${esc(s.title)}${s.shuffled ? " · shuffled" : ""}</strong>${state}</div>
+      <div class="who"><span>${esc(s.country ? s.country.name : "—")}</span><span>${fmt.format(s.meta ? s.meta.n : 0)} neurons</span></div>
+      <div class="nums"><div><small>Land</small>${p ? p.share.toFixed(2) + "%" : "—"}</div><div><small>Change</small><span class="${d >= 0 ? "up" : "down"}">${p ? (d >= 0 ? "+" : "") + d.toFixed(2) : "—"}</span></div><div><small>Army</small>${p ? fmt.format(Math.round(p.army / 1000)) + "k" : "—"}</div><div><small>Wars</small>${p ? p.war.length : "—"}</div></div>
+      ${s.conventionNote ? `<div class="warn">⚠ ${esc(s.conventionNote)}</div>` : ""}
+      <div class="orders">${t ? (t.orders.length ? t.orders.slice(0, 4).map(([m, n]) => `<b>${esc(n)}</b>`).join(" · ") + (t.orders.length > 4 ? ` +${t.orders.length - 4}` : "") : "holds") : "&nbsp;"}</div></div>`;
+  }).join("") + (G.mouse ? (() => { const m = G.mouse;
+    const st = m.state === "fault" ? `<span class="state fault">faulted</span>` : m.busy ? `<span class="state think">looking…</span>` : m.state === "load" ? `<span class="state think">loading</span>` : `<span class="state">${m.ms ? (m.ms / 1000).toFixed(2) + " s · " + m.ep : ""}</span>`;
+    return `<div class="card" style="--c:${MOUSE_COLOR}"><div class="who"><strong>Mouse · visual cortex</strong>${st}</div>
+      <div class="who"><span>watches the world · does not play</span><span>${m.meta ? fmt.format(m.meta.n) + " recorded neurons" : ""}</span></div>
+      <div class="orders">${m.looks ? `${fmt.format(m.above)} predicted above their usual level after ${m.looks} look${m.looks > 1 ? "s" : ""}` : "&nbsp;"}</div></div>`; })() : "");
+}
+const spark = $("spark");
+function drawSpark() {
+  const r = spark.getBoundingClientRect(), dpr = Math.min(devicePixelRatio, 2);
+  spark.width = Math.round(r.width * dpr); spark.height = Math.round(r.height * dpr);
+  const c = spark.getContext("2d"); c.scale(dpr, dpr);
+  const w = r.width, h = r.height;
+  c.strokeStyle = "rgba(237, 230, 214, 0.08)"; c.lineWidth = 1; c.beginPath(); c.moveTo(0, h - 6); c.lineTo(w, h - 6); c.stroke();
+  const all = G.seats.flatMap((s) => s.turns.map((t) => t.pos.share)); if (!all.length) return;
+  const hi = Math.max(...all) * 1.1, lo = Math.min(...all) * 0.9;
+  const x = (i) => (w - 8) * (i / (TURNS - 1)) + 4, y = (v) => h - 8 - (h - 16) * ((v - lo) / ((hi - lo) || 1));
+  for (const s of G.seats) {
+    const vals = s.turns.map((t) => t.pos.share); if (!vals.length) continue;
+    c.strokeStyle = s.color; c.lineWidth = 2; c.lineJoin = "round"; c.setLineDash(s.shuffled ? [4, 3] : []); c.beginPath();
+    vals.forEach((v, i) => (i ? c.lineTo(x(i), y(v)) : c.moveTo(x(i), y(v)))); c.stroke();
+  }
+  c.setLineDash([]);
+}
+const setNow = (title, detail) => { $("nowTitle").textContent = title; $("nowDetail").textContent = detail || " "; };
+function paintWorld(position) {
+  const owners = (() => { const ob = b64bytes(position.owners); return new Uint16Array(ob.buffer, 0, ob.length >> 1); })();
+  const edge = new Map(G.seats.filter((s) => s.country).map((s) => [s.country.id, hexRGB(s.color.slice(1))]));
+  paintInto(G.map.world, WW, WH, worldImage, owners, position.colors, edge); wc.putImageData(worldImage, 0, 0);
+  wc.fillStyle = "rgba(8, 10, 14, 0.75)"; wc.fillRect(24, 22, 900, 64); wc.fillStyle = "#F2B84B"; wc.font = "600 30px Figtree, sans-serif"; wc.textBaseline = "middle";
+  wc.fillText(`THE WORLD  ·  ${G.meta.mapName.toUpperCase()}  ·  TURN ${position.turn + 1}  ·  ${G.seats.length} ANIMALS`, 42, 54); worldTex.needsUpdate = true;
+  for (const s of G.seats) if (s.crop) {
+    paintInto(s.crop, MAPW, MAPH, s.mapImage, owners, position.colors, edge); s.mapCanvas.getContext("2d").putImageData(s.mapImage, 0, 0); s.lastOwners = true;
+  }
+}
+
+// ---------------------------------------------------------------- setup
+let maps = [], plan = [], wanted = null, restartNow = false, gameNo = 0, odVersion = "";
+const G = { meta: null, seats: [], turn: null, map: null };
+const mapSelect = $("mapSelect");
+const prettyMap = (m) => (m.imported ? `${m.name} (imported)` : ({ map: "Modern day" }[m.name] || m.name));
+function renderSeatRows() {
+  const opts = playable();
+  $("seatRows").innerHTML = plan.map((p, i) => `<div class="seatrow" style="--c:${SEAT_COLORS[i]}">
+    <div class="top"><select data-i="${i}" data-k="species" aria-label="Animal ${i + 1}">${opts.map((s) => `<option value="${s.id}" ${s.id === p.species ? "selected" : ""}>${esc(label(s))}</option>`).join("")}</select>
+    <button type="button" class="x" data-rm="${i}" aria-label="Remove animal ${i + 1}" ${plan.length < 2 ? "disabled" : ""}>&times;</button></div>
+    <div class="row2"><select data-i="${i}" data-k="iso" aria-label="Country for animal ${i + 1}"><option value="">Random country</option>${(G.mapInfo ? G.mapInfo.seats : []).map((c) => `<option value="${c.iso}" ${c.iso === p.iso ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
+    <select data-i="${i}" data-k="shuffled" aria-label="Wiring for animal ${i + 1}"><option value="">Its own wiring</option><option value="1" ${p.shuffled ? "selected" : ""}>Shuffled wiring</option></select></div></div>`).join("");
+  $("seatRows").querySelectorAll("select").forEach((el) => el.addEventListener("change", () => { const p = plan[+el.dataset.i]; p[el.dataset.k] = el.dataset.k === "shuffled" ? !!el.value : el.value; }));
+  $("seatRows").querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => { plan.splice(+b.dataset.rm, 1); renderSeatRows(); }));
+  $("addSeat").disabled = plan.length >= MAX_SEATS || !opts.length;
+}
+function renderPresets() {
+  const has = (id) => playable().some((s) => s.id === id);
+  const P = [];
+  if (has("drosophila_female") && has("drosophila_male")) P.push(["Female vs male fly", [{ species: "drosophila_female" }, { species: "drosophila_male" }]]);
+  for (const s of playable()) { P.push([`${shortLabel(s)} vs its shuffled self`, [{ species: s.id }, { species: s.id, shuffled: true }]]); break; }
+  if (has("c_elegans_herm") && has("ciona_larva")) P.push(["Worm vs sea squirt", [{ species: "c_elegans_herm" }, { species: "ciona_larva" }]]);
+  if (playable().length > 2) P.push(["Everyone who can play", playable().slice(0, MAX_SEATS).map((s) => ({ species: s.id }))]);
+  $("presets").innerHTML = P.map(([name], i) => `<button type="button" data-p="${i}">${esc(name)}</button>`).join("");
+  $("presets").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { plan = P[+b.dataset.p][1].map((x) => ({ iso: "", shuffled: false, ...x })); renderSeatRows(); }));
+  return P;
+}
+$("addSeat").addEventListener("click", () => { const opts = playable(); plan.push({ species: opts[plan.length % opts.length].id, iso: "", shuffled: false }); renderSeatRows(); });
+mapSelect.addEventListener("change", async () => { G.mapInfo = await loadMap(mapSelect.value); renderSeatRows(); });
+$("startBtn").addEventListener("click", () => {
+  const isos = plan.map((p) => p.iso).filter(Boolean);
+  if (new Set(isos).size !== isos.length) { $("setupNote").className = "note warn"; $("setupNote").textContent = "Two animals on one country is a race, not a game: the game would take whichever orders came last. Pick different countries."; return; }
+  $("setupNote").className = "note"; $("setupNote").textContent = "Starting…";
+  wanted = { path: mapSelect.value, plan: plan.map((p) => ({ ...p })) }; restartNow = true;
+});
+const narrow = matchMedia("(max-width: 900px)");
+function setFold(open) { $("setup").dataset.open = open ? "true" : "false"; $("setupFold").setAttribute("aria-expanded", String(open)); $("setupFold").querySelector("i").textContent = open ? "−" : "+"; }
+setFold(!narrow.matches);
+$("setupFold").addEventListener("click", () => setFold($("setup").dataset.open !== "true"));
+
+// ---------------------------------------------------------------- the game loop: they play, forever
+const TITLE = { e: "Economy", p: "Politics", w: "War", n: "Navy" };
+async function newStage(choice) {
+  const map = await loadMap(choice.path);
+  G.map = map;
+  const pool = map.seats.filter((c) => c.provinces >= Math.min(12, map.seats[0].provinces));
+  const taken = new Set(choice.plan.map((p) => p.iso).filter(Boolean));
+  const seats = choice.plan.map((p, i) => {
+    const species = roster.find((s) => s.id === p.species);
+    let country = p.iso ? map.seats.find((c) => c.iso === p.iso) : null;
+    if (!country) { const free = pool.filter((c) => !taken.has(c.iso)); country = free[Math.floor(Math.random() * free.length)]; taken.add(country.iso); }
+    return { i, species, shuffled: !!p.shuffled, country, color: SEAT_COLORS[i], title: label(species),
+      subtitle: `${country.name}${p.shuffled ? " · shuffled wiring" : ""}`, turns: [], state: "load", start: null, landless: 0, fault: null };
+  });
+  clearStations();
+  G.seats = seats;
+  seats.forEach((s, i) => {
+    s.st = buildStation(s, i, seats.length); stations.push(s.st);
+    s.mapCanvas = document.createElement("canvas"); s.mapCanvas.width = MAPW; s.mapCanvas.height = MAPH;
+    s.mapImage = s.mapCanvas.getContext("2d").createImageData(MAPW, MAPH);
+  });
+  G.mouse = null;
+  if (available.has("mouse_v1") && $("mouseOn").checked) G.mouse = buildMouse(seats.length);
+  layoutViews(seats); goTo("wide", !G.meta);
+  // Every brain loads in parallel, each in its own worker. A brain that fails
+  // to load faults its seat; it does not take the stage with it.
+  await Promise.all(seats.map(async (s) => {
+    try {
+      const b = brainFor(s.species, s.shuffled, (f) => { s.stateLine = `downloading ${Math.round(f * 100)}%`; showBoard(); });
+      const m = await b.loaded;
+      s.brain = b; s.meta = m.meta;
+      s.motor = Int32Array.from(motorOf(m.meta));
+      s.carriers = {}; for (const [ch, sig] of Object.entries(m.meta.senses || {})) s.carriers[sig] = s.carriers[sig] ? `${s.carriers[sig]}, ${ch}` : ch;
+      // A convention is OUR claim about this animal, so it is shown beside it
+      // rather than left in a provenance block nobody opens. The package's own
+      // wording wins over the roster's summary.
+      const prov = m.meta.provenance || {};
+      const conv = prov.convention || Object.values(prov).find((v) => typeof v === "string" && v.startsWith("CONVENTION"));
+      s.conventionNote = conv || s.species.warning || null;
+      let posBuf = null;
+      // Where the source put each neuron, when it says; the shuffle moves wires, not cells.
+      try { const r = await fetch(`./species/${s.species.id}/positions.bin`); if (r.ok && (r.headers.get("content-type") || "").includes("octet")) posBuf = await r.arrayBuffer(); } catch (_) { /* layout by role */ }
+      attachBrain(s.st, m.meta, brainPoints(m.meta, posBuf), s.color);
+      s.state = "ready";
+    } catch (e) { s.state = "fault"; s.fault = String(e.message || e); s.stateLine = s.fault.slice(0, 60); s.meta = s.meta || { n: 0 }; }
+    showBoard();
+  }));
+  return seats;
+}
+async function playForever() {
+  for (;;) {
+    const choice = wanted || { path: maps.find((m) => m.name === "1914")?.path || maps[0].path, plan };
+    wanted = null; restartNow = false;
+    const seats = await newStage(choice);
+    const seed = (Math.random() * 0x7fffffff) >>> 0;
+    const mapName = prettyMap(maps.find((m) => m.path === choice.path) || { name: choice.path });
+    setNow(`Seating ${seats.length} animals…`, `${mapName} · seed ${seed}`);
+    const began = await game.call("stage", { map: `${choice.path}:rung`, isos: seats.map((s) => s.country.iso), seed, turns: TURNS });
+    if (began.seats !== seats.length) { setNow("That stage could not be set", "Trying again with new countries"); await sleep(2500); continue; }
+    gameNo += 1;
+    G.meta = { game: gameNo, seed, mapName }; G.turn = 0;
+    for (const s of seats) { s.crop = await seatCrop(G.map, s.country.id); s.enc = new Encoder(); }
+    $("setupNote").className = "note"; $("setupNote").textContent = "A stage with two animals on it compares two mappings we wrote, not two animals. The fair opponent is the same brain with its wiring shuffled.";
+    showBoard();
+    let over = false;
+    while (!over && !restartNow) {
+      const t0 = performance.now();
+      // Everyone reads the same world before anyone moves.
+      const positions = [];
+      for (const s of seats) positions.push((await game.call("seatPosition", { seat: s.i, withMap: s.i === 0 })).position);
+      G.turn = positions[0].turn;
+      if (positions[0].over) break;
+      for (const s of seats) { const p = positions[s.i]; if (s.start === null) s.start = p.share; s.landless = p.mine === 0 ? s.landless + 1 : 0; if (s.landless >= 2 && s.state !== "dead") { s.state = "dead"; s.stateLine = `on turn ${p.turn + 1}`; } }
+      const live = seats.filter((s) => s.state !== "dead");
+      if (!live.length) break;
+      live.forEach((s) => { if (s.state !== "fault") s.state = "think"; }); showBoard();
+      // Brains think in parallel, one worker each; the page shows who is still thinking.
+      const thought = await Promise.all(live.map(async (s) => {
+        const p = positions[s.i];
+        const { bySignal, rates } = s.enc.rates(p, s.meta.senses || {});
+        if (s.state === "fault") return { s, p, bySignal, fault: true };
+        const tSeed = turnSeed(BRAIN_SEED, p.iso, p.turn);
+        try {
+          const r = await s.brain.w.call("run", { rates, windowMs: s.meta.window_ms || WINDOW_MS, seed: tSeed });
+          s.state = "ready"; showBoard();
+          return { s, p, bySignal, counts: r.counts, ms: r.ms, tSeed };
+        } catch (e) { s.state = "fault"; s.stateLine = String(e.message || e).slice(0, 60); return { s, p, bySignal, fault: true }; }
+      }));
+      // Orders go in rotating seat order, so nobody always moves first.
+      const rot = G.turn % thought.length;
+      for (const r of [...thought.slice(rot), ...thought.slice(0, rot)]) {
+        const { s, p } = r;
+        let orders = [], motor = 0, fired = 0;
+        if (!r.fault) {
+          const { tokens } = choose(r.counts, s.meta.groups, p, r.tSeed);
+          const { moves } = await game.call("seatPlay", { seat: s.i, tokens: tokens.join(",") });
+          const nameOf = new Map(Object.entries(p.legal).flatMap(([m, list]) => list.map((x) => [`${m}:${x.a}`, x.name])));
+          orders = moves.filter((mv) => mv.outcome === "did" && !mv.token.endsWith(":0")).map((mv) => [TITLE[mv.token[0]], nameOf.get(mv.token) || mv.token]);
+          for (const i of s.motor) motor += r.counts[i];
+          const act = s.st.brain && s.st.brain.activity;
+          for (let i = 0; i < r.counts.length; i++) if (r.counts[i]) { fired++; if (act) act[i] = Math.max(act[i], Math.min(1, 0.45 + 0.18 * Math.log2(1 + r.counts[i]))); }
+          s.st.drive = Math.min(1, orders.length / 6 + motor / Math.max(50, s.motor.length * 2));
+          s.st.haze.intensity = 0.3 + s.st.drive * 1.2;
+        }
+        s.turns.push({ pos: p, orders, motor, fired, bySignal: r.bySignal, ms: r.ms || 0, fault: r.fault });
+      }
+      paintWorld(positions[0]);
+      mouseLook();
+      for (const s of seats) drawMonitor(s);
+      showBoard(); drawSpark();
+      const slowest = Math.max(...thought.map((r) => r.ms || 0));
+      setNow(`Game ${gameNo}: turn ${G.turn + 1} of ${TURNS}`, `${live.length} of ${seats.length} still playing · slowest brain ${(slowest / 1000).toFixed(2)} s`);
+      const pace = +$("speedSelect").value - (performance.now() - t0);
+      if (pace > 0) await sleep(pace);
+      if (restartNow) break;
+      const end = await game.call("endTurn");
+      if (!end.more) over = true;
+    }
+    if (restartNow) continue;
+    // Standings, stated as what they are.
+    const ranked = [...seats].sort((a, b) => ((b.turns.at(-1)?.pos.share ?? 0) - (a.turns.at(-1)?.pos.share ?? 0)));
+    setNow(`Game ${gameNo} over: ${ranked.map((s) => `${shortLabel(s.species)}${s.shuffled ? " (shuffled)" : ""} ${s.state === "dead" ? "wiped out" : (s.turns.at(-1)?.pos.share ?? 0).toFixed(2) + "%"}`).join(" · ")}`,
+      "Read that as a result about the mappings, not the animals. The next game starts in a few seconds.");
+    for (let i = 0; i < 20 && !restartNow; i++) await sleep(500);
+  }
+}
+
+// ---------------------------------------------------------------- start
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  if (w > 900) camera.setViewOffset(w, h, -40, 0, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  for (const st of stations) if (st.brain) st.brain.mat.uniforms.uScale.value = (h / 900) * 1.1;
+  drawSpark();
+}
+addEventListener("resize", resize);
+resize();
+const clock = new THREE.Clock();
+let lastMs = performance.now();
+function loop(nowMs) {
+  const dt = Math.min(0.1, (nowMs - lastMs) / 1000); lastMs = nowMs;
+  const now = clock.getElapsedTime();
+  if (tween) {
+    tween.t = Math.min(1, tween.t + dt / 1.2); const e = tween.t < 0.5 ? 4 * tween.t ** 3 : 1 - (-2 * tween.t + 2) ** 3 / 2;
+    camera.position.lerpVectors(tween.p0, tween.p1, e); yaw = tween.y0 + (tween.y1 - tween.y0) * e; pitch = tween.q0 + (tween.q1 - tween.q0) * e; applyCamera();
+    if (tween.t >= 1) tween = null;
+  }
+  const v = 1.4 * (keys.has("ShiftLeft") || keys.has("ShiftRight") ? 3.2 : 1) * dt;
+  const fwd = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation), right = new THREE.Vector3(1, 0, 0).applyEuler(camera.rotation);
+  let moved = false;
+  if (keys.has("KeyW") || keys.has("ArrowUp")) { camera.position.addScaledVector(fwd, v); moved = true; }
+  if (keys.has("KeyS") || keys.has("ArrowDown")) { camera.position.addScaledVector(fwd, -v); moved = true; }
+  if (keys.has("KeyD") || keys.has("ArrowRight")) { camera.position.addScaledVector(right, v); moved = true; }
+  if (keys.has("KeyA") || keys.has("ArrowLeft")) { camera.position.addScaledVector(right, -v); moved = true; }
+  if (keys.has("KeyE")) { camera.position.y += v; moved = true; }
+  if (keys.has("KeyQ")) { camera.position.y -= v; moved = true; }
+  if (moved) { tween = null; pressView(""); }
+  const k = Math.exp(-dt * 2.2);
+  for (const s of G.seats) {
+    const st = s.st; if (!st) continue;
+    st.drive *= Math.exp(-dt * 0.8);
+    if (!reduceMotion) st.animal.animate(now, s.state === "dead" ? 0 : st.drive);
+    if (st.brain) {
+      const a = st.brain.activity; for (let i = 0; i < a.length; i++) a[i] = a[i] > 0.002 ? a[i] * k : 0;
+      st.brain.actAttr.needsUpdate = true;
+      if (!reduceMotion) st.brain.holder.rotation.y = now * 0.12;
+    }
+  }
+  if (G.mouse && G.mouse.st) {
+    const st = G.mouse.st; st.drive *= Math.exp(-dt * 0.8);
+    if (!reduceMotion) st.animal.animate(now, st.drive);
+    if (st.brain) { const a = st.brain.activity; for (let i = 0; i < a.length; i++) a[i] = a[i] > 0.002 ? a[i] * k : 0; st.brain.actAttr.needsUpdate = true; if (!reduceMotion) st.brain.holder.rotation.y = now * 0.12; }
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+(async () => {
+  try {
+    const loadText = $("loadText");
+    requestAnimationFrame(loop);
+    loadText.textContent = "Reading the roster…";
+    await readRoster();
+    if (!playable().length) throw new Error("no species package is in ./species/. Run the exporters in tools/ first (see README).");
+    const presets = renderPresets();
+    $("mouseRow").hidden = !available.has("mouse_v1");
+    plan = presets.length ? presets[0][1].map((x) => ({ iso: "", shuffled: false, ...x })) : [{ species: playable()[0].id, iso: "", shuffled: false }];
+    loadText.textContent = "Starting Open Doctrines…";
+    await new Promise((res, rej) => game.on((m) => {
+      if (m.type === "progress" && m.total) loadText.textContent = `Downloading Open Doctrines: ${Math.round((100 * m.got) / m.total)}%…`;
+      if (m.type === "ready") res();
+      if (m.type === "error") rej(new Error(m.message));
+    }));
+    try { odVersion = (await (await fetch("./agent/VERSION", { cache: "no-cache" })).text()).trim(); } catch (_) { /* unknown build */ }
+    loadText.textContent = "Reading the maps…";
+    maps = (await game.call("maps")).maps;
+    const first = maps.find((m) => m.name === "1914") || maps[0];
+    mapSelect.innerHTML = maps.map((m) => `<option value="${esc(m.path)}">${esc(prettyMap(m))}</option>`).join("");
+    mapSelect.value = first.path;
+    G.mapInfo = await loadMap(first.path);
+    renderSeatRows();
+    $("loading").dataset.done = "true";
+    playForever().catch((e) => { console.error(e); setNow("The stage stopped", String(e.message || e)); });
+  } catch (e) {
+    $("loadText").className = "err";
+    $("loadText").textContent = `Could not start: ${e && e.message ? e.message : e}`;
+  }
+})();
 </script>

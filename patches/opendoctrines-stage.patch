@@ -1,0 +1,297 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7c293b9..766dac5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -3134,7 +3134,7 @@ if(EMSCRIPTEN)
+         "-sEXPORT_NAME=createOpenDoctrinesAgent"
+         "-sENVIRONMENT=web,worker,node"
+         "--no-entry"
+-        "-sEXPORTED_FUNCTIONS=['_od_agent_begin','_od_agent_position','_od_agent_play','_od_agent_end_turn','_od_agent_map_seed','_malloc','_free']"
++        "-sEXPORTED_FUNCTIONS=['_od_agent_begin','_od_agent_position','_od_agent_play','_od_agent_end_turn','_od_agent_map_seed','_od_agent_stage_begin','_od_agent_seat_position','_od_agent_seat_play','_malloc','_free']"
+         "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','FS']"
+         "-sFORCE_FILESYSTEM=1"
+         "-sWASM_BIGINT"
+diff --git a/src/Game.h b/src/Game.h
+index 4342554..3701338 100644
+--- a/src/Game.h
++++ b/src/Game.h
+@@ -43,6 +43,7 @@
+ #include "ScriptEngine.h"
+ #include "MapEditor.h"
+ #include "raymath.h"
++#include <algorithm>
+ #include <deque>
+ #include <set>
+ #include <unordered_map>
+@@ -398,6 +399,7 @@ public:
+     bool agentUseDataDir(const std::string& dir);
+     /** Load the seat ("map:ISO[:world]", map by name or by .odmap path) and seed it. */
+     bool agentBegin(const std::string& seatSpec, unsigned int seed, int untilTurn);
++    AgentPosition agentPosition(int cid);
+     AgentPosition agentPosition();
+     /** The position as the FIFO protocol prints it, ending "[AGENT] waiting". */
+     std::string agentPositionText();
+@@ -406,6 +408,28 @@ public:
+     std::string agentOwners(std::vector<AgentColor>& colors);
+     /** Apply one turn's "e:1,w:2" choices under the budget rules. */
+     std::vector<AgentMove> agentPlay(const std::string& tokens);
++
++    // ── SEVERAL SEATS, ONE WORLD ──
++    //
++    // Open Animal Stage puts several outside players in one game. Every seat is
++    // an ordinary AI country whose policy is switched off -- takeTurn is not
++    // called for it, and the orders come in through agentPlay instead -- and
++    // the player is the spectator. So no seat gets the player's special paths
++    // and every seat plays under the same rules as every other, which is the
++    // point of a stage. `isos` are the seats' countries, `mapSpec` is
++    // "map[:world]" as for agentBegin. Returns the number of seats, 0 on failure.
++    int agentBeginStage(const std::string& mapSpec, const std::vector<std::string>& isos,
++                        unsigned int seed, int untilTurn);
++    void agentResearchPlayer(bool on) { m_agentResearchPlayer = on; }
++    int agentSeatCount() const { return (int)m_agentSeats.size(); }
++    int agentSeatCid(int seat) const {
++        return (seat >= 0 && seat < (int)m_agentSeats.size()) ? m_agentSeats[seat] : 0;
++    }
++    bool isAgentSeat(int cid) const {
++        return std::find(m_agentSeats.begin(), m_agentSeats.end(), cid) != m_agentSeats.end();
++    }
++    std::string agentPositionJsonFor(int cid, bool withMap);
++    std::vector<AgentMove> agentPlayFor(int cid, const std::string& tokens);
+     /** Resolve the turn. False once the seat has played its last turn. */
+     bool agentEndTurn();
+     bool agentOver() const { return m_turnNumber >= m_agentUntilTurn; }
+@@ -4858,6 +4882,16 @@ private:
+      */
+     int m_benchPlayUntilTurn = 0;
+     int m_agentUntilTurn = 0;          // see agentBegin
++    std::vector<int> m_agentSeats;     // see agentBeginStage
++    // ── A SEAT PLAYED FROM OUTSIDE STILL RESEARCHES ──
++    //
++    // Research is progressed for every country except the player's, because a
++    // player sets theirs in the UI. An agent seat has no UI, so the seat that
++    // is the player -- Open Fly's fly -- never researched at all while every
++    // country around it did, and research is about 40% of an AI country's
++    // spending. The browser agent sets this; runBenchAgent does NOT, so the
++    // benchmark's numbers are unchanged and stay comparable with past runs.
++    bool m_agentResearchPlayer = false;
+     // Set by agentBegin before it loads. A world played from outside is never
+     // drawn, so the load skips what only feeds the screen: the border raster,
+     // the political texture and its shading field, icons and flags. Nothing a
+diff --git a/src/Game_Agent.cpp b/src/Game_Agent.cpp
+index a43aed7..8145712 100644
+--- a/src/Game_Agent.cpp
++++ b/src/Game_Agent.cpp
+@@ -160,9 +160,10 @@ bool Game::agentBegin(const std::string& seatSpec, unsigned int seed, int untilT
+     return true;
+ }
+ 
+-Game::AgentPosition Game::agentPosition() {
++Game::AgentPosition Game::agentPosition() { return agentPosition(m_playerCountryId); }
++
++Game::AgentPosition Game::agentPosition(int cid) {
+     AgentPosition p;
+-    const int cid = m_playerCountryId;
+     const Country* me = m_countries.getCountry(cid);
+     m_ai->agentRefresh();
+     p.turn = m_turnNumber;
+@@ -275,14 +276,21 @@ std::string Game::agentPositionText() {
+ }
+ 
+ std::string Game::agentPositionJson(bool withMap) {
+-    const AgentPosition p = agentPosition();
++    return agentPositionJsonFor(m_playerCountryId, withMap);
++}
++
++std::string Game::agentPositionJsonFor(int cid, bool withMap) {
++    const AgentPosition p = agentPosition(cid);
+     nlohmann::json j;
+     j["turn"] = p.turn;
+     j["until"] = p.until;
+     j["over"] = agentOver();
+     j["name"] = p.name;
+     j["iso"] = p.iso;
+-    j["cid"] = m_playerCountryId;
++    j["cid"] = cid;
++    // A seat wiped off the map is still asked for its position every turn;
++    // "alive" says whether there is anything left for it to play.
++    j["alive"] = p.mine > 0;
+     j["mine"] = p.mine;
+     j["owned"] = p.owned;
+     j["share"] = p.owned ? 100.0 * (double)p.mine / (double)p.owned : 0.0;
+@@ -292,6 +300,18 @@ std::string Game::agentPositionJson(bool withMap) {
+     j["net"] = p.inc.net;
+     j["war"] = p.wars;
+     j["benchShare"] = m_benchScoreShare;
++    // What this country has finished researching, and what it is paying for it:
++    // the numbers the resolver already keeps, so a viewer and a test can see
++    // research happening rather than infer it from income.
++    j["researched"] = (int)(m_countryResearched.count(cid) ? m_countryResearched.at(cid).size() : 0);
++    j["researchShare"] = m_countryResearchAllocation.count(cid) ? m_countryResearchAllocation.at(cid) : 0.0f;
++    // What it is working on, if anything. A seat that funds research without
++    // choosing a focus has nothing active and finishes nothing, which is easy
++    // to mistake for research being broken.
++    const auto acIt = m_countryResearchActive.find(cid);
++    const int active = acIt == m_countryResearchActive.end() ? -1 : acIt->second;
++    j["researching"] = (active >= 0 && active < (int)m_researchNodes.size())
++                           ? m_researchNodes[active].name : std::string();
+     nlohmann::json legal = nlohmann::json::object(), budget = nlohmann::json::object();
+     for (int mod = 0; mod < 4; ++mod) {
+         nlohmann::json list = nlohmann::json::array();
+@@ -316,8 +336,11 @@ std::string Game::agentPositionJson(bool withMap) {
+ }
+ 
+ std::vector<Game::AgentMove> Game::agentPlay(const std::string& cmds) {
++    return agentPlayFor(m_playerCountryId, cmds);
++}
++
++std::vector<Game::AgentMove> Game::agentPlayFor(int cid, const std::string& cmds) {
+     std::vector<AgentMove> out;
+-    const int cid = m_playerCountryId;
+     int used[4] = {0, 0, 0, 0};
+     bool passed[4] = {false, false, false, false};
+     size_t at = 0;
+@@ -357,6 +380,43 @@ std::vector<Game::AgentMove> Game::agentPlay(const std::string& cmds) {
+     return out;
+ }
+ 
++int Game::agentBeginStage(const std::string& mapSpec, const std::vector<std::string>& isos,
++                          unsigned int seed, int untilTurn) {
++    m_agentSeats.clear();
++    if (isos.empty()) return 0;
++    // mapSpec is "map[:world]"; agentBegin wants "map:ISO[:world]". The first
++    // seat's country is only what the load needs to start from -- it stops
++    // being the player below.
++    std::string map = mapSpec, world;
++    const size_t odmapEnd = mapSpec.find(".odmap");
++    const size_t colon = mapSpec.find(':', odmapEnd == std::string::npos ? 0 : odmapEnd);
++    if (colon != std::string::npos) {
++        map = mapSpec.substr(0, colon);
++        world = mapSpec.substr(colon + 1);
++    }
++    if (!agentBegin(map + ":" + isos[0] + (world.empty() ? "" : ":" + world), seed, untilTurn))
++        return 0;
++    for (const std::string& iso : isos) {
++        const int cid = cidForIso(iso);
++        // Two seats on one country is not a pairing but a race: the game would
++        // take whichever orders arrived last. Refused, as the stage refuses it.
++        if (cid <= 0 || !m_countries.getCountry(cid) || isAgentSeat(cid)) {
++            fprintf(stderr, "[AGENT] stage seat %s: %s\n", iso.c_str(),
++                    cid > 0 && isAgentSeat(cid) ? "taken twice" : "no such country");
++            m_agentSeats.clear();
++            return 0;
++        }
++        m_agentSeats.push_back(cid);
++    }
++    // THE PAGE WATCHES; NOBODY IS THE PLAYER. The player's country skips the
++    // AI's research and gets the player's own paths through turn resolution,
++    // so a seat that was the player would be playing a different game from the
++    // seats beside it. The spectator is how the game starts before a country is
++    // picked, so this is a state it already knows.
++    m_playerCountryId = SPC_CID;
++    return (int)m_agentSeats.size();
++}
++
+ bool Game::agentEndTurn() {
+     processTurn();
+     PollInputEvents();
+diff --git a/src/Game_Research.cpp b/src/Game_Research.cpp
+index f093835..4fd4672 100644
+--- a/src/Game_Research.cpp
++++ b/src/Game_Research.cpp
+@@ -152,7 +152,10 @@ void researchProbeNote(const Game& g, int cid, const ResearchNode& node, bool ex
+ }  // namespace
+ 
+ void Game::progressCountryResearch(int countryId) {
+-    if (countryId == m_playerCountryId) return;
++    // The guard lives here as well as at the call site, so a caller that
++    // forgets cannot progress the player's research by accident. An agent seat
++    // is the one player with nobody at a keyboard: see m_agentResearchPlayer.
++    if (countryId == m_playerCountryId && !m_agentResearchPlayer) return;
+     auto raIt = m_countryResearchAllocation.find(countryId);
+     if (raIt == m_countryResearchAllocation.end() || raIt->second <= 0.001f) {
+         // Unfunded. Worth counting only when a node is actually waiting on the
+diff --git a/src/Game_TurnLogic.cpp b/src/Game_TurnLogic.cpp
+index cae4441..c9539c4 100644
+--- a/src/Game_TurnLogic.cpp
++++ b/src/Game_TurnLogic.cpp
+@@ -963,8 +963,10 @@ void Game::processCountryTurn(int countryId) {
+     // Research progresses AFTER the AI's snapshot: a node completed here is
+     // then visible as a delta in the learning step — progressing before the
+     // snapshot made every completion invisible (and unrewarded, and uncounted).
+-    if (m_ai && countryId != m_playerCountryId) m_ai->takeTurn(countryId);
+-    if (countryId != m_playerCountryId) progressCountryResearch(countryId);
++    // A stage seat's orders come from outside (agentPlayFor), so the policy
++    // does not also play it. Everything else an AI country gets, it gets.
++    if (m_ai && countryId != m_playerCountryId && !isAgentSeat(countryId)) m_ai->takeTurn(countryId);
++    if (countryId != m_playerCountryId || m_agentResearchPlayer) progressCountryResearch(countryId);
+     // THE ONLY MOMENT A COUNTRY'S WHOLE TURN IS ON THE TABLE. It has decided,
+     // and nothing it decided has been consumed yet. See m_turnOrderLog.
+     // Where this country's pacification money goes. A reflex, not a decision
+diff --git a/src/web/AgentWeb.cpp b/src/web/AgentWeb.cpp
+index 4a892cf..70852cc 100644
+--- a/src/web/AgentWeb.cpp
++++ b/src/web/AgentWeb.cpp
+@@ -29,6 +29,7 @@
+ 
+ #include <memory>
+ #include <string>
++#include <vector>
+ 
+ namespace {
+ std::unique_ptr<Game> g_game;
+@@ -41,6 +42,9 @@ EMSCRIPTEN_KEEPALIVE int od_agent_begin(const char* seat, unsigned int seed, int
+     g_game.reset();
+     g_game = std::make_unique<Game>();
+     if (!g_game->agentUseDataDir("/data/")) return 0;
++    // A browser seat has no research screen; without this it would be the only
++    // country in the world that never researches.
++    g_game->agentResearchPlayer(true);
+     return g_game->agentBegin(seat ? seat : "", seed, turns) ? 1 : 0;
+ }
+ 
+@@ -63,6 +67,45 @@ EMSCRIPTEN_KEEPALIVE int od_agent_end_turn() {
+     return (g_game && g_game->agentEndTurn()) ? 1 : 0;
+ }
+ 
++// ── A STAGE: several seats in one world (Open Animal Stage) ──
++//
++//   od_agent_stage_begin("1914:rung", "FRA,GER,SWE", seed, 120) -> seats, 0 on failure
++//   od_agent_seat_position(seat, withMap)                        -> JSON, as above
++//   od_agent_seat_play(seat, "e:1,w:2")                           -> JSON, as above
++//
++// Seats are indices into the ISO list. od_agent_end_turn resolves the turn for
++// the whole world, once every seat has played.
++EMSCRIPTEN_KEEPALIVE int od_agent_stage_begin(const char* mapSpec, const char* isoCsv,
++                                              unsigned int seed, int turns) {
++    std::vector<std::string> isos;
++    std::string csv = isoCsv ? isoCsv : "", tok;
++    for (size_t at = 0; at <= csv.size(); ++at) {
++        if (at == csv.size() || csv[at] == ',') { if (!tok.empty()) isos.push_back(tok); tok.clear(); }
++        else if (csv[at] != ' ') tok.push_back(csv[at]);
++    }
++    g_game.reset();
++    g_game = std::make_unique<Game>();
++    if (!g_game->agentUseDataDir("/data/")) return 0;
++    return g_game->agentBeginStage(mapSpec ? mapSpec : "", isos, seed, turns);
++}
++
++EMSCRIPTEN_KEEPALIVE const char* od_agent_seat_position(int seat, int withMap) {
++    g_out = (g_game && g_game->agentSeatCid(seat) > 0)
++                ? g_game->agentPositionJsonFor(g_game->agentSeatCid(seat), withMap != 0)
++                : std::string("null");
++    return g_out.c_str();
++}
++
++EMSCRIPTEN_KEEPALIVE const char* od_agent_seat_play(int seat, const char* tokens) {
++    nlohmann::json moves = nlohmann::json::array();
++    if (g_game && g_game->agentSeatCid(seat) > 0) {
++        for (const Game::AgentMove& m : g_game->agentPlayFor(g_game->agentSeatCid(seat), tokens ? tokens : ""))
++            moves.push_back({{"token", m.token}, {"outcome", m.outcome}, {"detail", m.detail}});
++    }
++    g_out = moves.dump();
++    return g_out.c_str();
++}
++
+ EMSCRIPTEN_KEEPALIVE unsigned int od_agent_map_seed() {
+     return g_game ? g_game->agentMapSeed() : 0;
+ }
