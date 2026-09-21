@@ -1,6 +1,9 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Open Animal Stage</title>
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Mapped animal brains play Open Doctrines against each other, live in your browser. A sister project to Open Fly.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,7 +54,11 @@
   .setup { position: fixed; left: 20px; top: 150px; width: 330px; max-height: calc(100vh - 250px); overflow-y: auto; border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
   .setup[data-open="false"] > :not(h2) { display: none; }
   .setup h2, .rail h2 { margin: 0; font: 600 11px/1 var(--body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  .fold { all: unset; cursor: pointer; display: flex; width: 100%; justify-content: space-between; }
+  .fold { all: unset; cursor: pointer; display: flex; flex: 1; justify-content: space-between; align-items: center; }
+  /* The map importer lives in the header, not inside the panel: on a narrow
+     window the panel starts folded, and a button inside it was invisible. */
+  .setuphead { display: flex; gap: 10px; align-items: center; }
+  .setuphead #importBtn { font: 600 11px/1 var(--body); letter-spacing: 0.04em; text-transform: none; padding: 6px 9px; border-radius: 999px; white-space: nowrap; }
   .setup label { display: grid; gap: 5px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
   .setup select { width: 100%; text-transform: none; letter-spacing: 0; }
   .presets { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -127,12 +134,11 @@
 </header>
 
 <section class="setup glass" id="setup" data-open="true" aria-label="Who plays">
-  <h2><button type="button" class="fold" id="setupFold" aria-expanded="true">Who plays next<i aria-hidden="true">&minus;</i></button></h2>
+  <h2 class="setuphead"><button type="button" class="fold" id="setupFold" aria-expanded="true">Who plays next<i aria-hidden="true">&minus;</i></button><button type="button" id="importBtn" title="Play on your own map (or drop an .odmap anywhere on the page)">Import .odmap</button></h2>
   <div class="presets" id="presets"></div>
   <div class="seatrows" id="seatRows"></div>
   <button type="button" id="addSeat">Add an animal</button>
   <label>Map <select id="mapSelect"><option>Loading maps&hellip;</option></select></label>
-  <button type="button" id="importBtn">Import .odmap</button>
   <input type="file" id="importFile" accept=".odmap" hidden>
   <label>Speed
     <select id="speedSelect">

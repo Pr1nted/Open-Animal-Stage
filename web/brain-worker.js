@@ -29,7 +29,10 @@ self.onmessage = async (e) => {
       const meta = await (await fetch(new URL("brain.json", base))).json();
       const connectome = await fetchConnectome(base, meta);
       brain = new AnimalBrain(connectome, meta);
-      const shuffled = msg.shuffleSeed != null ? brain.shuffle(msg.shuffleSeed) : null;
+      // On the stage the shuffled seat is the ACTIVITY-MATCHED control, so it
+      // plays as actively as the real brain; tools/stage_bench.mjs keeps the
+      // original unmatched control too, as ":shuffled".
+      const shuffled = msg.shuffleSeed != null ? brain.shuffle(msg.shuffleSeed, (meta.params && meta.params.shuffled_gain) || 1) : null;
       self.postMessage({ type: "loaded", n: brain.n, nsyn: brain.nsyn, ngap: brain.ngap, meta, shuffled });
     } else if (msg.type === "run") {
       const t0 = performance.now();

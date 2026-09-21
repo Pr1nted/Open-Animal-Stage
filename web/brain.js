@@ -98,7 +98,15 @@ export class AnimalBrain {
   // The control. Deterministic in `seed`, so a shuffled seat is the same brain
   // every game and can be reported as one. Takes a copy: the real wiring stays
   // in the buffer, untouched, for anything else that reads it.
-  shuffle(seed) {
+  // `gain` (default 1, the original control) scales synaptic and input weight
+  // for the rewired brain only. Rewiring breaks the paths from the senses to
+  // the motor neurons, so at gain 1 the control barely responds -- and a quiet
+  // brain plays a different game (it hardly acts) rather than the same game
+  // with different wiring. The activity-matched control sets the gain so the
+  // rewired brain responds as broadly as the real one under the same drive
+  // (tools/calibrate.mjs, params.shuffled_gain). See PREREGISTRATION.md.
+  shuffle(seed, gain = 1) {
+    if (gain !== 1) { this.wSyn *= gain; this.wPoisson *= gain; }
     const rand = mulberry32(seed >>> 0);
     const post = Uint32Array.from(this.post);
     const owner = new Uint32Array(this.nsyn);
@@ -123,7 +131,7 @@ export class AnimalBrain {
       for (let e = 0; e < b.length; e++) if (b[e] === this.gapA[e]) { const j = (e + 1) % b.length; const t = b[e]; b[e] = b[j]; b[j] = t; }
       this.gapB = b;
     }
-    this.shuffled = { seed: seed >>> 0, unresolvedSelfLoops: loops };
+    this.shuffled = { seed: seed >>> 0, gain, unresolvedSelfLoops: loops };
     return this.shuffled;
   }
 

@@ -7,7 +7,9 @@
 // Every player takes the SAME seat on the SAME world seed, alone against the
 // game's AI, so two players differ only in who played that country. Players:
 //   <species id>            the animal's brain and mapping, as on the stage
-//   <species id>:shuffled   the same brain rewired (brain.js shuffle, seed 783)
+//   <species id>:shuffled   the same brain rewired (brain.js shuffle, seed 783), gain 1
+//   <species id>:matched    rewired, with the gain that matches the real brain's
+//                           responsiveness (params.shuffled_gain; PREREGISTRATION.md)
 //   hold                    sends nothing but "hold": the floor
 //   random                  a random legal pick per module, up to the budget,
 //                           from a per-turn seeded draw: chance
@@ -56,7 +58,10 @@ async function playOne({ player, seat, seed, turns }) {
   if (player !== "hold" && player !== "random") {
     meta = JSON.parse(readFileSync(path.join(web, "species", species, "brain.json"), "utf8"));
     brain = new AnimalBrain(connectome(species), meta);
+    // ":shuffled" is the v1 control exactly as preregistered (gain 1);
+    // ":matched" is the activity-matched control added afterwards (v2).
     if (variant === "shuffled") brain.shuffle(783);
+    else if (variant === "matched") brain.shuffle(783, meta.params.shuffled_gain || 1);
     motor = Int32Array.from(meta.motor || meta.dn || []);
   }
   const enc = new Encoder();
@@ -125,6 +130,7 @@ function report(games, plan) {
       wiped: gs.filter((g) => g.wiped_turn !== null).length,
       vsHold: p === "hold" ? null : paired(p, "hold"),
       vsShuffled: p.includes(":") || p === "hold" || p === "random" ? null : paired(p, `${p}:shuffled`),
+      vsMatched: p.includes(":") || p === "hold" || p === "random" ? null : paired(p, `${p}:matched`),
       orders: +(gs.reduce((a, g) => a + g.orders_per_turn, 0) / gs.length).toFixed(1),
     };
   }).sort((a, b) => b.score.mean - a.score.mean);
@@ -134,9 +140,9 @@ function report(games, plan) {
     `${games.length} games: ${plan.seats.length} seats x ${plan.seeds.length} seeds x ${byPlayer.size} players, ${plan.turns} turns each, Open Doctrines ${readFileSync(path.join(web, "agent", "VERSION"), "utf8").trim()}.`,
     "Score = land share at the end minus at the start, percentage points (wiped out = ended on 0). Intervals are 95% bootstrap over games; \"vs\" columns are paired on the same seat and seed.",
     "This compares mappings we wrote, not animals. The one comparison about the wiring itself is each animal against its own shuffled copy.", "",
-    "| player | games | mean score [95% CI] | wiped | vs hold | vs its shuffled wiring | orders/turn |",
-    "|---|---|---|---|---|---|---|",
-    ...rows.map((r) => `| ${r.player} | ${r.games} | ${ci(r.score)} | ${r.wiped}/${r.games} | ${r.vsHold ? `${ci(r.vsHold)} ${verdict(r.vsHold)}` : "—"} | ${r.vsShuffled ? `${ci(r.vsShuffled)} ${verdict(r.vsShuffled)}` : "—"} | ${r.orders} |`),
+    "| player | games | mean score [95% CI] | wiped | vs hold | vs shuffled (v1) | vs activity-matched shuffle (v2) | orders/turn |",
+    "|---|---|---|---|---|---|---|---|",
+    ...rows.map((r) => `| ${r.player} | ${r.games} | ${ci(r.score)} | ${r.wiped}/${r.games} | ${r.vsHold ? `${ci(r.vsHold)} ${verdict(r.vsHold)}` : "—"} | ${r.vsShuffled ? `${ci(r.vsShuffled)} ${verdict(r.vsShuffled)}` : "—"} | ${r.vsMatched ? `${ci(r.vsMatched)} ${verdict(r.vsMatched)}` : "—"} | ${r.orders} |`),
   ];
   return { rows, markdown: lines.join("\n") + "\n" };
 }

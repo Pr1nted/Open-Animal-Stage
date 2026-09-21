@@ -237,3 +237,41 @@ silent, and the page shows the response. This is input to a model of a wiring
 diagram, not pain: nothing on this stage can feel anything, and the page says
 so beside the animal. It happens only after elimination, so it changes no game
 result and no benchmark (`tools/stage_bench.mjs` ends a game at the wipe-out).
+
+## Amendment: an activity-matched control, written 2026-09-22 before it ran
+
+**Why.** Midway through the v1 benchmark, replaying both flies' games showed that
+the shuffled control does not play the same game with different wiring: it
+hardly plays. Rewiring breaks the paths from the senses to the descending
+neurons, so the control's motor activity collapses into one or two groups per
+menu (98% of war-menu spikes in one group) and it gave ~370 orders in 10 games
+against thousands for the real fly, declaring no wars. So "real vs shuffled"
+compared an active brain with a nearly silent one, which is not the question the
+control was meant to answer. The v1 control stays in the v1 benchmark exactly as
+registered, and its results are reported as they are.
+
+**The matched control.** The same rewiring (seed 783), with one gain applied to
+synaptic and input weights of the rewired brain only, set so that it responds as
+broadly as the real brain under the same drive:
+
+1. *Measure:* the calibration measure above (every sensory channel at 100 Hz,
+   200 ms, seeds 1–5; fraction of the 39 action groups with at least one spike).
+2. *Target:* the same measure for that species' real brain at its own params.
+3. *Ladder:* gain = 2^(k/2), k = 0 … 12; the smallest k whose measure reaches the
+   target. If none does, k = 12, and the report says so.
+4. No game is played to set it. It is recorded as `params.shuffled_gain` with
+   its ladder in `params.shuffled_calibration` (`tools/calibrate.mjs`).
+
+**v2 benchmark.** `bench/plan-v2.json`: the seven animals' matched controls on
+the same seats and seeds as v1 (140 games), reported beside v1 as "vs
+activity-matched shuffle", with the same rules: paired, 95% intervals, inside
+the interval is no difference. The page's "Shuffled wiring" seat uses the
+matched control from now on.
+
+*Clarification, 2026-09-22, after the gains were computed and before any v2
+game:* only the two adult flies needed a gain (female 2.83, male 2.0). For the
+larva, both worms, the sea squirt and the zebrafish the ladder stopped at k = 0,
+so their matched control **is** the v1 control: gain 1, the same code path, and
+on the same seats and seeds the same games, deterministically. They are not
+re-run; their v1 `:shuffled` results stand for both columns. `bench/plan-v2.json`
+runs the flies' matched controls only (40 games).

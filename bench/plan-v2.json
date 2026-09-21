@@ -1,0 +1,21 @@
+{
+ "name": "v2, activity-matched controls for the two flies (the others' gain is 1), 2026-09-22",
+ "players": [
+  "drosophila_female:matched",
+  "drosophila_male:matched"
+ ],
+ "seats": [
+  "1914:FRA",
+  "1914:GER",
+  "1914:SWE",
+  "1939:USA"
+ ],
+ "seeds": [
+  7001,
+  7002,
+  7003,
+  7004,
+  7005
+ ],
+ "turns": 120
+}
