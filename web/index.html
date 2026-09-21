@@ -174,16 +174,23 @@ const SEAT_COLORS = ["#F2B84B", "#6FB7AE", "#E07A8F", "#A58BE0", "#A8D46F", "#6F
 function rpcWorker(url, classic) {
   const w = new Worker(url, classic ? {} : { type: "module" });
   let next = 1;
-  const waiting = new Map(), listeners = [];
+  const waiting = new Map(), listeners = [], missed = [];
+  // A WORKER THAT IS READY BEFORE ANYBODY IS LISTENING. The game worker posts
+  // "ready" as soon as its module is up, which can be before the page has
+  // finished reading the roster and attached a listener -- and then the page
+  // waits for a message that already came and went. Adding the zebrafish's
+  // 4.6 MB brain.json to the roster read was enough to lose that race every
+  // time. Anything with no listener yet is kept and replayed to the first one.
   w.onmessage = (e) => {
     const m = e.data;
     if (m.id && waiting.has(m.id)) { const { res, rej } = waiting.get(m.id); waiting.delete(m.id); m.error || m.type === "error" ? rej(new Error(m.error || m.message)) : res(m); }
-    else listeners.forEach((f) => f(m));
+    else if (listeners.length) listeners.forEach((f) => f(m));
+    else missed.push(m);
   };
   w.onerror = (e) => { const err = new Error(e.message || "worker failed"); for (const { rej } of waiting.values()) rej(err); waiting.clear(); listeners.forEach((f) => f({ type: "error", message: err.message })); };
   return {
     call: (type, payload = {}, transfer = []) => new Promise((res, rej) => { const id = next++; waiting.set(id, { res, rej }); w.postMessage({ type, id, ...payload }, transfer); }),
-    on: (f) => listeners.push(f),
+    on: (f) => { listeners.push(f); while (missed.length) f(missed.shift()); },
     post: (m) => w.postMessage(m),
     kill: () => w.terminate(),
   };
@@ -234,7 +241,7 @@ async function readRoster() {
     // published site the usual reason is that its data may be used but not
     // redistributed, so it has to be exported locally (tools/export_*.py).
     const why = s.id === "mouse_v1" ? (available.has(s.id) ? "watches the world; cannot play" : "visual cortex only; not exported")
-      : s.blocker && available.has(s.id) ? s.blocker
+      : s.blocker && available.has(s.id) ? (isWatcher(s) ? `watches from its tank; cannot act. ${s.blocker}` : s.blocker)
       : ok ? `${fmt.format(available.get(s.id).n)} neurons`
       : s.redistribute === false ? `not served here: ${s.redistribute_why}. Export it locally to play it.`
       : s.id === "zebrafish_larva" ? "needs a Fish1 export (a personal CAVE token)" : "not exported yet";
@@ -243,7 +250,15 @@ async function readRoster() {
 }
 // A species whose roster row names a blocker is shown, with the blocker, and not
 // offered: by PREREGISTRATION.md a seat whose senses reach no neuron never acts.
-const playable = () => roster.filter((s) => available.has(s.id) && s.id !== "mouse_v1" && !s.blocker);
+// A blocker keeps a species off the stage -- unless it can still be WATCHED,
+// which is what the fish's blocker describes.
+const playable = () => roster.filter((s) => available.has(s.id) && s.id !== "mouse_v1" && (!s.blocker || isWatcher(s)));
+// A WATCHER takes a tank and a country and is shown the game, but gives no
+// orders, because nothing in it reaches a motor neuron. The zebrafish is one:
+// Fish1's axons are unproofread, so 62% of its cells have no edge at all. That
+// is the dataset's state today, not a fault in the mapping, and the exporter
+// re-tests it -- the fish seats itself when proofreading catches up.
+const isWatcher = (species) => species.seat === false && species.id !== "mouse_v1";
 
 // ---------------------------------------------------------------- the room
 const canvas = $("stage");
@@ -734,7 +749,7 @@ function drawMonitor(seat) {
   c.fillStyle = seat.color; c.font = "600 20px Figtree, sans-serif"; c.fillText("ITS ORDERS", 880, 64);
   let y = 98;
   if (t) {
-    if (!t.orders.length) { c.fillStyle = "#8C92A0"; c.font = "500 18px Figtree, sans-serif"; c.fillText(t.fault ? "(its brain faulted)" : "(holds)", 880, y); }
+    if (!t.orders.length) { c.fillStyle = "#8C92A0"; c.font = "500 18px Figtree, sans-serif"; c.fillText(t.fault ? "(its brain faulted)" : seat.watcher ? "(it is not asked for orders)" : "(holds)", 880, y); }
     t.orders.slice(0, 9).forEach(([m, name]) => { c.fillStyle = "#8C92A0"; c.font = "500 14px Figtree, sans-serif"; c.fillText(m, 880, y + 3); c.fillStyle = "#E6E8EE"; c.font = "500 18px Figtree, sans-serif"; c.fillText(name, 970, y); y += 28; });
     c.fillStyle = seat.color; c.font = "600 20px Figtree, sans-serif"; c.fillText("ITS BRAIN", 880, 380);
     c.fillStyle = "#E6E8EE"; c.font = "500 17px Figtree, sans-serif";
@@ -771,12 +786,14 @@ function showBoard() {
   $("board").innerHTML = G.seats.map((s) => {
     const t = s.turns[s.turns.length - 1], p = t && t.pos;
     const d = p && s.start != null ? p.share - s.start : 0;
-    const state = s.state === "dead" ? `<span class="state dead">wiped out</span>` : s.state === "fault" ? `<span class="state fault">brain faulted</span>`
+    const state = s.watcher && s.state !== "dead" && s.state !== "fault" ? `<span class="state think">watching</span>`
+      : s.state === "dead" ? `<span class="state dead">wiped out</span>` : s.state === "fault" ? `<span class="state fault">brain faulted</span>`
       : s.state === "think" ? `<span class="state think">thinking…</span>` : s.state === "load" ? `<span class="state think">${esc(s.stateLine || "loading")}</span>` : `<span class="state">${t ? `${(t.ms / 1000).toFixed(2)} s` : ""}</span>`;
     return `<div class="card" style="--c:${s.color}"><div class="who"><strong>${esc(s.title)}${s.shuffled ? " · shuffled" : ""}</strong>${state}</div>
       <div class="who"><span>${esc(s.country ? s.country.name : "—")}</span><span>${fmt.format(s.meta ? s.meta.n : 0)} neurons</span></div>
       <div class="nums"><div><small>Land</small>${p ? p.share.toFixed(2) + "%" : "—"}</div><div><small>Change</small><span class="${d >= 0 ? "up" : "down"}">${p ? (d >= 0 ? "+" : "") + d.toFixed(2) : "—"}</span></div><div><small>Army</small>${p ? fmt.format(Math.round(p.army / 1000)) + "k" : "—"}</div><div><small>Wars</small>${p ? p.war.length : "—"}</div></div>
       ${s.conventionNote ? `<div class="warn">⚠ ${esc(s.conventionNote)}</div>` : ""}
+      ${s.watcher ? `<div class="warn">⚠ ${esc((s.species.why_no_seat || "").split(". ")[0] || "shown the game, but it gives no orders")}. Its senses fire; nothing reaches its motor neurons.</div>` : ""}
       <div class="orders">${t ? (t.orders.length ? t.orders.slice(0, 4).map(([m, n]) => `<b>${esc(n)}</b>`).join(" · ") + (t.orders.length > 4 ? ` +${t.orders.length - 4}` : "") : "holds") : "&nbsp;"}</div></div>`;
   }).join("") + (G.mouse ? (() => { const m = G.mouse;
     const st = m.state === "fault" ? `<span class="state fault">faulted</span>` : m.busy ? `<span class="state think">looking…</span>` : m.state === "load" ? `<span class="state think">loading</span>` : `<span class="state">${m.ms ? (m.ms / 1000).toFixed(2) + " s · " + m.ep : ""}</span>`;
@@ -821,7 +838,7 @@ const prettyMap = (m) => (m.imported ? `${m.name} (imported)` : ({ map: "Modern 
 function renderSeatRows() {
   const opts = playable();
   $("seatRows").innerHTML = plan.map((p, i) => `<div class="seatrow" style="--c:${SEAT_COLORS[i]}">
-    <div class="top"><select data-i="${i}" data-k="species" aria-label="Animal ${i + 1}">${opts.map((s) => `<option value="${s.id}" ${s.id === p.species ? "selected" : ""}>${esc(label(s))}</option>`).join("")}</select>
+    <div class="top"><select data-i="${i}" data-k="species" aria-label="Animal ${i + 1}">${opts.map((s) => `<option value="${s.id}" ${s.id === p.species ? "selected" : ""}>${esc(label(s))}${isWatcher(s) ? " — watches, cannot act" : ""}</option>`).join("")}</select>
     <button type="button" class="x" data-rm="${i}" aria-label="Remove animal ${i + 1}" ${plan.length < 2 ? "disabled" : ""}>&times;</button></div>
     <div class="row2"><select data-i="${i}" data-k="iso" aria-label="Country for animal ${i + 1}"><option value="">Random country</option>${(G.mapInfo ? G.mapInfo.seats : []).map((c) => `<option value="${c.iso}" ${c.iso === p.iso ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>
     <select data-i="${i}" data-k="shuffled" aria-label="Wiring for animal ${i + 1}"><option value="">Its own wiring</option><option value="1" ${p.shuffled ? "selected" : ""}>Shuffled wiring</option></select></div></div>`).join("");
@@ -835,7 +852,10 @@ function renderPresets() {
   if (has("drosophila_female") && has("drosophila_male")) P.push(["Female vs male fly", [{ species: "drosophila_female" }, { species: "drosophila_male" }]]);
   for (const s of playable()) { P.push([`${shortLabel(s)} vs its shuffled self`, [{ species: s.id }, { species: s.id, shuffled: true }]]); break; }
   if (has("c_elegans_herm") && has("ciona_larva")) P.push(["Worm vs sea squirt", [{ species: "c_elegans_herm" }, { species: "ciona_larva" }]]);
-  if (playable().length > 2) P.push(["Everyone who can play", playable().slice(0, MAX_SEATS).map((s) => ({ species: s.id }))]);
+  const actors = playable().filter((s) => !isWatcher(s));
+  if (actors.length > 2) P.push(["Everyone who can play", actors.slice(0, MAX_SEATS).map((s) => ({ species: s.id }))]);
+  const fish = playable().find(isWatcher);
+  if (fish && actors.length) P.push([`A ${shortLabel(fish).toLowerCase()} in a tank`, [{ species: actors[0].id }, { species: fish.id }]]);
   $("presets").innerHTML = P.map(([name], i) => `<button type="button" data-p="${i}">${esc(name)}</button>`).join("");
   $("presets").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { plan = P[+b.dataset.p][1].map((x) => ({ iso: "", shuffled: false, ...x })); renderSeatRows(); }));
   return P;
@@ -864,7 +884,7 @@ async function newStage(choice) {
     const species = roster.find((s) => s.id === p.species);
     let country = p.iso ? map.seats.find((c) => c.iso === p.iso) : null;
     if (!country) { const free = pool.filter((c) => !taken.has(c.iso)); country = free[Math.floor(Math.random() * free.length)]; taken.add(country.iso); }
-    return { i, species, shuffled: !!p.shuffled, country, color: SEAT_COLORS[i], title: label(species),
+    return { i, species, watcher: isWatcher(species), shuffled: !!p.shuffled, country, color: SEAT_COLORS[i], title: label(species),
       subtitle: `${country.name}${p.shuffled ? " · shuffled wiring" : ""}`, turns: [], state: "load", start: null, landless: 0, fault: null };
   });
   clearStations();
@@ -890,8 +910,11 @@ async function newStage(choice) {
       // rather than left in a provenance block nobody opens. The package's own
       // wording wins over the roster's summary.
       const prov = m.meta.provenance || {};
-      const conv = prov.convention || Object.values(prov).find((v) => typeof v === "string" && v.startsWith("CONVENTION"));
-      s.conventionNote = conv || s.species.warning || null;
+      // The sentence, not the rule's name: a package may carry both, and
+      // "mece-ganglia-v1" tells a viewer nothing about what was assumed.
+      const said = Object.values(prov).find((v) => typeof v === "string" && v.includes("CONVENTION (not a source annotation)"));
+      s.conventionNote = (said ? said.slice(said.indexOf("CONVENTION")) : null) || s.species.warning
+        || (prov.convention ? `a stated convention (${prov.convention}); see ${prov.convention_doc || "the package's provenance"}` : null);
       let posBuf = null;
       // Where the source put each neuron, when it says; the shuffle moves wires, not cells.
       try { const r = await fetch(`./species/${s.species.id}/positions.bin`); if (r.ok && (r.headers.get("content-type") || "").includes("octet")) posBuf = await r.arrayBuffer(); } catch (_) { /* layout by role */ }
@@ -946,7 +969,14 @@ async function playForever() {
       for (const r of [...thought.slice(rot), ...thought.slice(0, rot)]) {
         const { s, p } = r;
         let orders = [], motor = 0, fired = 0;
-        if (!r.fault) {
+        if (!r.fault && s.watcher) {
+          // It was shown the game and its brain ran; it is asked for nothing.
+          for (const i of s.motor) motor += r.counts[i];
+          const act = s.st.brain && s.st.brain.activity;
+          for (let i = 0; i < r.counts.length; i++) if (r.counts[i]) { fired++; if (act) act[i] = Math.max(act[i], Math.min(1, 0.45 + 0.18 * Math.log2(1 + r.counts[i]))); }
+          s.st.drive = Math.min(1, fired / 400);
+          s.st.haze.intensity = 0.3 + s.st.drive * 1.2;
+        } else if (!r.fault) {
           const { tokens } = choose(r.counts, s.meta.groups, p, r.tSeed);
           const { moves } = await game.call("seatPlay", { seat: s.i, tokens: tokens.join(",") });
           const nameOf = new Map(Object.entries(p.legal).flatMap(([m, list]) => list.map((x) => [`${m}:${x.a}`, x.name])));
