@@ -493,7 +493,7 @@
         "package_bytes": 1608268,
         "sign_source": "synapses_axde_label, per synapse; one sign per cell by majority. Checked against somas.cell_type (confocal vglut2a/gad1b), which was not used to assign it.",
         "sensory_motor": "CONVENTION, not an annotation: see docs/fish1-mapping.md and provenance.sensory / provenance.motor. Convention id: brain-nuclei-v1",
-        "licence": "Fish1 (fish1_v250915), Lichtman and Engert labs (Harvard) with Google Connectomics, via the CAVE datastack fish1_full at https://global.brain-wire-test.org, materialization 704. Access is by a personal token obtained by hand; the token is never read, printed or written by this exporter. The redistribution terms for Fish1 have not been established by this project -- data/roster.json records redistribute: null and redistribute_why, and this derived package is gitignored and not published until those terms are read.",
+        "licence": "Fish1 (fish1_v250915, CAVE datastack fish1_full, materialization 704), Lichtman and Engert labs (Harvard) with Google Connectomics, under the Fish1 Open Access Policy (fish1-release.storage.googleapis.com/data_policy.html). Cite: Petkova et al. (2025), the Fish1 resource paper.",
         "counts": {
           "somas_released": 187052,
           "neurons": 178976,
@@ -626,8 +626,8 @@
         "usable_as_a_seat": true,
         "why_no_seat": null
       },
-      "redistribute": null,
-      "redistribute_why": "Fish1 terms not yet read; treat as not redistributable until they are",
+      "redistribute": true,
+      "redistribute_why": "Fish1 data policy (read 2026-09-21, fish1-release.storage.googleapis.com/data_policy.html): an 'Open Access Policy' whose condition is that any work using it cites Petkova et al. 2025; it names no licence and says nothing about derived data, and is shipped on the owner's decision, with that citation",
       "wiring": "proofread-v704",
       "sensory_convention": "brain-nuclei-v1",
       "warning": "This fish senses through four brain nuclei chosen by our convention, because its peripheral sense organs are missing from the traced data."

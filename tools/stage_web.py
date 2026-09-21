@@ -29,7 +29,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The page's own files. web/species is per-species and handled below; web/agent
 # is the game module, which is Open Doctrines' own build and ships with it.
 PAGE = ["index.html", "brain.js", "brain-worker.js", "mouse-worker.js", "decide.js",
-        "game-worker.js", "packed.js", "lif.js", "agent"]
+        "game-worker.js", "packed.js", "lif.js", "agent", "models"]
+# Cloudflare Pages refuses any single file over 25 MiB. A big brain ships as
+# parts with a manifest (tools/pack_web.py), and the whole file beside them is
+# for local runs only: copied too, it failed the deploy outright.
+MAX_FILE = 25 * 1024 * 1024
 
 
 def main():
@@ -69,7 +73,10 @@ def main():
     shutil.copy2(os.path.join(ROOT, "data", "roster.json"), os.path.join(out, "roster.json"))
     os.makedirs(os.path.join(out, "species"), exist_ok=True)
     for sid, _, _, _ in ship:
-        shutil.copytree(os.path.join(web, "species", sid), os.path.join(out, "species", sid))
+        src = os.path.join(web, "species", sid)
+        packed = os.path.exists(os.path.join(src, "connectome.pack.json"))
+        shutil.copytree(src, os.path.join(out, "species", sid),
+                        ignore=(lambda d, names: ["connectome.bin"] if packed and "connectome.bin" in names else []))
     # A licence file naming every source that reached dist/, because CC-BY is
     # only satisfied by actually attributing.
     lines = ["Sources of everything served from this directory.", ""]
@@ -82,6 +89,11 @@ def main():
     lines += ["Animals not served here are listed in the page's roster with the reason.",
               "They can be exported locally with tools/export_*.py, under each source's own terms."]
     open(os.path.join(out, "LICENCES.txt"), "w").write("\n".join(lines) + "\n")
+    too_big = [(os.path.relpath(os.path.join(d, f), out), os.path.getsize(os.path.join(d, f)))
+               for d, _, fs in os.walk(out) for f in fs if os.path.getsize(os.path.join(d, f)) > MAX_FILE]
+    if too_big:
+        raise SystemExit("files over the host's 25 MiB limit, pack them first (tools/pack_web.py):\n" +
+                         "\n".join("  %s  %.1f MB" % (f, n / 1e6) for f, n in too_big))
     print("\n%s: %d species, page + agent, LICENCES.txt" % (args.out, len(ship)))
 
 

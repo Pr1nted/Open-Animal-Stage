@@ -251,7 +251,11 @@ async function readRoster() {
     // A species that is here plays. One that is not says why -- and on the
     // published site the usual reason is that its data may be used but not
     // redistributed, so it has to be exported locally (tools/export_*.py).
-    const why = s.id === "mouse_v1" ? (available.has(s.id) ? "watches the world; cannot play" : "visual cortex only; not exported")
+    // Not here, and not cleared to be served: that is the reason a visitor to
+    // the published page needs, not how to export it.
+    const held = !available.has(s.id) && s.redistribute !== true;
+    const why = held ? `not served here: ${s.redistribute_why}. Export it locally to play it.`
+      : s.id === "mouse_v1" ? (available.has(s.id) ? "watches the world; cannot play" : "visual cortex only; not exported")
       : s.blocker && available.has(s.id) ? (isWatcher(s) ? `watches from its tank; cannot act. ${s.blocker}` : s.blocker)
       : ok ? `${fmt.format(available.get(s.id).n)} neurons`
       : s.redistribute === false ? `not served here: ${s.redistribute_why}. Export it locally to play it.`
