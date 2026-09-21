@@ -202,7 +202,11 @@ const game = rpcWorker("./game-worker.js");
 // One worker per brain, kept between games: a fly is 91 MB to fetch and nobody
 // should download it twice because the viewer added a worm.
 const brains = new Map();
+// ?debug&fault=<species id> makes that brain fail to load, so the rule that a
+// faulted seat does not stop the stage can be tested by breaking it.
+const FORCE_FAULT = (() => { const q = new URLSearchParams(location.search); return q.has("debug") ? q.get("fault") : null; })();
 function brainFor(species, shuffled, onProgress) {
+  if (FORCE_FAULT === species.id) return { w: null, loaded: Promise.reject(new Error("forced fault (?fault)")), key: "forced" };
   const key = `${species.id}|${shuffled ? "shuffled" : "real"}`;
   if (brains.has(key)) return brains.get(key);
   const w = rpcWorker("./brain-worker.js");
@@ -563,7 +567,6 @@ function makeFish() {
     yolk.position.set(wave(0.2), -0.016, -0.03);
     eyes.forEach(({ e, s }) => e.position.set(s * 0.02, 0.006, -0.06));
     fin.position.set(wave(1), 0, 0.125); fin.rotation.y = Math.PI / 2 + wave(1) * 10;
-    root.position.y = Math.sin(t * 0.8) * 0.01;
   } };
 }
 // A HOUSE MOUSE, sitting up in front of its screen, which is the posture in
@@ -759,7 +762,10 @@ function modelled(id) {
       spine.forEach((l, i) => bend(l, a * (0.3 + i / spine.length) * Math.sin(i * 0.55 - t * f)));
       const sac = Math.round(Math.sin(t * 0.4) * 2) * 0.08;   // saccades: steps, not drift
       eyes.forEach((e) => turn(e, 0, sac, 0));
-      root.position.y = Math.sin(t * 0.8) * 0.01;
+      // The bob moves the model INSIDE the root: the station puts the root in
+      // the middle of the water, and setting root.position.y here dropped the
+      // fish onto the floor under its tank.
+      model.position.y = Math.sin(t * 0.8) * 0.01;
     } };
   }
   if (id === "mouse_v1") {
@@ -946,7 +952,9 @@ function layoutViews(seats) {
     // A worm is a quarter of a metre long on a plate; the camera comes down to
     // the dish rather than showing a desk with a smudge on it.
     const h = HOUSING[s.species.id];
-    VIEWS[`seat${i}`] = h === "tank" ? { pos: [x + 0.55, 1.45, 1.15], look: [x - 0.05, 1.0, -0.1] }
+    // At water level and close: a 7-day larva is glass-clear, and from above
+    // and across the room it disappears into the tank.
+    VIEWS[`seat${i}`] = h === "tank" ? { pos: [x + 0.38, 1.1, 0.62], look: [x - 0.02, 1.03, -0.02] }
       : h === "dish" ? { pos: [x + 0.2, 1.02, 0.36], look: [x, 0.765, 0.04] }
       : { pos: [x + 0.7, 1.55, 1.05], look: [x - 0.15, 0.95, -0.25] };
     VIEWS[`brain${i}`] = { pos: [x - 0.6, 1.55, 0.95], look: [x - 1.05, 1.3, 0.1] };
@@ -1059,8 +1067,8 @@ function drawMonitor(seat) {
     c.fillText(`${fmt.format(t.fired)} of ${fmt.format(seat.meta.n)} neurons fired`, 880, 438);
     c.fillStyle = "#8C92A0"; c.fillText(`thought for ${(t.ms / 1000).toFixed(2)} s`, 880, 464);
     ["reward", "harm", "reserve", "threat"].forEach((k, i) => {
-      const yy = 500 + i * 46, v = t.bySignal[k] || 0, carried = seat.carriers[k];
-      c.fillStyle = "#8C92A0"; c.font = "500 15px Figtree, sans-serif"; c.fillText(`${k}${carried ? ` → ${carried}` : " (no sense carries it)"}`, 880, yy);
+      const yy = 500 + i * 46, v = (t.bySignal || {})[k] || 0, carried = (seat.carriers || {})[k];
+      c.fillStyle = "#8C92A0"; c.font = "500 15px Figtree, sans-serif"; c.fillText(`${k}${carried ? ` → ${carried}` : seat.state === "fault" ? "" : " (no sense carries it)"}`, 880, yy);
       c.fillStyle = "#282e3c"; c.fillRect(880, yy + 20, 380, 9); c.fillStyle = carried ? "#6EAAE6" : "#3a3f4a"; c.fillRect(880, yy + 20, 380 * Math.min(1, v / 200), 9);
     });
     const p = t.pos;
@@ -1082,6 +1090,12 @@ function drawMonitor(seat) {
 }
 
 // ---------------------------------------------------------------- the rail and the spark
+// A provenance note can run to a page; the card shows its first sentence and
+// keeps the rest on hover, so a warning is read rather than scrolled past.
+function briefly(text, max = 170) {
+  const first = text.split(/(?<=\.)\s/)[0];
+  return first.length <= max ? first : first.slice(0, max).replace(/\s+\S*$/, "") + "…";
+}
 function showBoard() {
   $("gameTurn").textContent = G.turn != null ? `Turn ${G.turn + 1} of ${TURNS}` : "—";
   $("gameLabel").textContent = G.meta ? `Game ${G.meta.game} · ${G.meta.mapName} · seed ${G.meta.seed}${odVersion ? ` · Open Doctrines ${odVersion}` : ""}` : "Getting ready";
@@ -1094,7 +1108,7 @@ function showBoard() {
     return `<div class="card" style="--c:${s.color}"><div class="who"><strong>${esc(s.title)}${s.shuffled ? " · shuffled" : ""}</strong>${state}</div>
       <div class="who"><span>${esc(s.country ? s.country.name : "—")}</span><span>${fmt.format(s.meta ? s.meta.n : 0)} neurons</span></div>
       <div class="nums"><div><small>Land</small>${p ? p.share.toFixed(2) + "%" : "—"}</div><div><small>Change</small><span class="${d >= 0 ? "up" : "down"}">${p ? (d >= 0 ? "+" : "") + d.toFixed(2) : "—"}</span></div><div><small>Army</small>${p ? fmt.format(Math.round(p.army / 1000)) + "k" : "—"}</div><div><small>Wars</small>${p ? p.war.length : "—"}</div></div>
-      ${s.conventionNote ? `<div class="warn">⚠ ${esc(s.conventionNote)}</div>` : ""}
+      ${s.conventionNote ? `<div class="warn" title="${esc(s.conventionNote)}">⚠ ${esc(briefly(s.conventionNote))}</div>` : ""}
       ${s.watcher ? `<div class="warn">⚠ ${esc((s.species.why_no_seat || "").split(". ")[0] || "shown the game, but it gives no orders")}. Its senses fire; nothing reaches its motor neurons.</div>` : ""}
       <div class="orders">${t ? (t.orders.length ? t.orders.slice(0, 4).map(([m, n]) => `<b>${esc(n)}</b>`).join(" · ") + (t.orders.length > 4 ? ` +${t.orders.length - 4}` : "") : "holds") : "&nbsp;"}</div></div>`;
   }).join("") + (G.mouse ? (() => { const m = G.mouse;
@@ -1187,7 +1201,11 @@ async function newStage(choice) {
     let country = p.iso ? map.seats.find((c) => c.iso === p.iso) : null;
     if (!country) { const free = pool.filter((c) => !taken.has(c.iso)); country = free[Math.floor(Math.random() * free.length)]; taken.add(country.iso); }
     return { i, species, watcher: isWatcher(species), shuffled: !!p.shuffled, country, color: SEAT_COLORS[i], title: label(species),
-      subtitle: `${country.name}${p.shuffled ? " · shuffled wiring" : ""}`, turns: [], state: "load", start: null, landless: 0, fault: null };
+      subtitle: `${country.name}${p.shuffled ? " · shuffled wiring" : ""}`, turns: [], state: "load", start: null, landless: 0, fault: null,
+      // Read by the monitor and the board for EVERY seat, including one whose
+      // brain never loaded. A faulted seat without them threw here and took
+      // the whole stage down, which is the one thing a fault must not do.
+      carriers: {}, meta: { n: 0, senses: {}, groups: {} }, motor: new Int32Array(0) };
   });
   clearStations();
   G.seats = seats;
@@ -1204,6 +1222,12 @@ async function newStage(choice) {
   });
   G.mouse = withMouse ? buildMouse(seats.length, total) : null;
   layoutViews(seats); goTo("wide", !G.meta);
+  // THE WORLD AND THE BRAINS LOAD TOGETHER. Building the world is the game
+  // worker's job and loading brains is theirs; neither needs the other, and
+  // doing them one after the other made the first game wait for the sum.
+  G.seed = (Math.random() * 0x7fffffff) >>> 0;
+  G.staged = game.call("stage", { map: `${choice.path}:rung`, isos: seats.map((s) => s.country.iso), seed: G.seed, turns: TURNS });
+  setNow(`Building the world for ${seats.length} animals…`, "the game and every brain load at once");
   // Every brain loads in parallel, each in its own worker. A brain that fails
   // to load faults its seat; it does not take the stage with it.
   await Promise.all(seats.map(async (s) => {
@@ -1237,10 +1261,10 @@ async function playForever() {
     const choice = wanted || { path: maps.find((m) => m.name === "1914")?.path || maps[0].path, plan };
     wanted = null; restartNow = false;
     const seats = await newStage(choice);
-    const seed = (Math.random() * 0x7fffffff) >>> 0;
+    const seed = G.seed;
     const mapName = prettyMap(maps.find((m) => m.path === choice.path) || { name: choice.path });
-    setNow(`Seating ${seats.length} animals…`, `${mapName} · seed ${seed}`);
-    const began = await game.call("stage", { map: `${choice.path}:rung`, isos: seats.map((s) => s.country.iso), seed, turns: TURNS });
+    setNow(`Seating ${seats.length} animals…`, `${mapName} · seed ${seed} · building the world`);
+    const began = await G.staged;
     if (began.seats !== seats.length) { setNow("That stage could not be set", "Trying again with new countries"); await sleep(2500); continue; }
     gameNo += 1;
     G.meta = { game: gameNo, seed, mapName }; G.turn = 0;
@@ -1330,7 +1354,7 @@ addEventListener("resize", resize);
 resize();
 // ?debug hands the scene to the console, for checking camera views and
 // stations by measurement instead of by squinting at screenshots.
-if (new URLSearchParams(location.search).has("debug")) window.__stage = { camera, scene, G, views: () => VIEWS, goTo };
+if (new URLSearchParams(location.search).has("debug")) window.__stage = { camera, scene, G, views: () => VIEWS, goTo, game, brains };
 const clock = new THREE.Clock();
 let lastMs = performance.now();
 function loop(nowMs) {
@@ -1389,7 +1413,12 @@ function loop(nowMs) {
     await loadModels(roster.map((s) => s.id));
     const presets = renderPresets();
     $("mouseRow").hidden = !available.has("mouse_v1");
-    plan = presets.length ? presets[0][1].map((x) => ({ iso: "", shuffled: false, ...x })) : [{ species: playable()[0].id, iso: "", shuffled: false }];
+    // THE FIRST STAGE OPENS FAST. Two fly brains are ~240 MB and the male's
+    // takes half a minute to unpack, so opening on them looked like a page
+    // that does not load. The first game uses small brains; the flies are one
+    // click away.
+    const light = presets.find(([name]) => /Worm vs sea squirt/.test(name)) || presets[0];
+    plan = light ? light[1].map((x) => ({ iso: "", shuffled: false, ...x })) : [{ species: playable()[0].id, iso: "", shuffled: false }];
     loadText.textContent = "Starting Open Doctrines…";
     await new Promise((res, rej) => game.on((m) => {
       if (m.type === "progress" && m.total) loadText.textContent = `Downloading Open Doctrines: ${Math.round((100 * m.got) / m.total)}%…`;
