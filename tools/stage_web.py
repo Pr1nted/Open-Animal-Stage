@@ -29,7 +29,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # The page's own files. web/species is per-species and handled below; web/agent
 # is the game module, which is Open Doctrines' own build and ships with it.
 PAGE = ["index.html", "brain.js", "brain-worker.js", "mouse-worker.js", "decide.js",
-        "game-worker.js", "packed.js", "lif.js", "agent", "models"]
+        "game-worker.js", "packed.js", "lif.js", "record.js", "agent", "models",
+        "favicon.ico", "favicon-32.png", "apple-touch-icon.png"]
 # Cloudflare Pages refuses any single file over 25 MiB. A big brain ships as
 # parts with a manifest (tools/pack_web.py), and the whole file beside them is
 # for local runs only: copied too, it failed the deploy outright.
@@ -92,6 +93,14 @@ def main():
     lines += ["Animals not served here are listed in the page's roster with the reason.",
               "They can be exported locally with tools/export_*.py, under each source's own terms."]
     open(os.path.join(out, "LICENCES.txt"), "w").write("\n".join(lines) + "\n")
+    # Everything index.html names by relative path must be here. The first
+    # itch build shipped without record.js and the favicons, and 404'd them.
+    import re
+    page = open(os.path.join(out, "index.html")).read()
+    refs = set(re.findall(r'(?:src|href)="\./?([A-Za-z0-9_.-]+\.(?:js|ico|png|css|json))"', page))
+    missing = sorted(r for r in refs if not os.path.exists(os.path.join(out, r)))
+    if missing:
+        raise SystemExit("index.html references files that were not staged: " + ", ".join(missing))
     too_big = [(os.path.relpath(os.path.join(d, f), out), os.path.getsize(os.path.join(d, f)))
                for d, _, fs in os.walk(out) for f in fs if os.path.getsize(os.path.join(d, f)) > MAX_FILE]
     if too_big:
