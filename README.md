@@ -37,8 +37,8 @@ obtained. [ROSTER.md](ROSTER.md) is the working document; this is the summary.
 | Roundworm, hermaphrodite | Cook et al. 2019 | 302 neurons + gap junctions | **Plays** (calibrated, k = 3) |
 | Roundworm, male | Cook et al. 2019 | 385 neurons + gap junctions | **Plays** (calibrated, k = 4) |
 | Sea squirt larva | Ryan et al. 2016 | 207 neurons + gap junctions | **Plays**, but never reached the calibration target |
-| Fruit fly, larva | Winding et al. 2023 | 2,952 neurons | Exported, **not seated**: 89% of its wiring has no sign |
-| Zebrafish larva, 7dpf | Fish1 | 187,052 somas | Exported, **not seated**: its axons are unproofread, so no sense reaches an order |
+| Fruit fly, larva | Winding et al. 2023 | 2,952 neurons | **Plays** (calibrated, k = 5), its sensory neurons assumed cholinergic by a stated convention |
+| Zebrafish larva, 7dpf | Fish1 | 187,052 somas | **Plays** (calibrated, k = 4), sensing through four brain nuclei by a stated convention |
 | Mouse | MICrONS digital twin | 8,221 recorded neurons | **Watches** the world; cannot play |
 
 ### The three honest problems
@@ -55,17 +55,19 @@ display what its cortex does. That is a real thing the data supports — the
 functional half of MICrONS is exactly "these neurons, shown these images,
 responded like this" — and it is not the same activity as playing.
 
-**The zebrafish has a connectome and not yet a circuit.** Fish1 releases
+**The zebrafish's sense organs are not in the traced data.** Fish1 releases
 187,052 somata and 29.5 million synapses, and the synapses carry a per-synapse
 excitatory/inhibitory call, which is everything a LIF model needs. What it does
 not yet have is *axons attached to their cell bodies*: a presynaptic endpoint
 lands on a segment carrying an identified soma about 2% of the time, so only
 ~0.8% of synapses have both ends on a cell, and no path runs from any sensory
-channel to any motor neuron. The fish is exported anyway — the mapping is
-written down in `docs/fish1-mapping.md` before any result, so that re-testing
-on a later materialization cannot become re-tuning — and `data/roster.json`
-takes its `seat` straight from the reachability test the exporter runs. It will
-seat itself when the community's proofreading catches up.
+peripheral sensory ganglion to any motor neuron (the public automated
+agglomeration was tried too, and is no better). The brain itself is wired: so
+the fish senses through four brain nuclei instead — pretectum, tectum and two
+vestibular nuclei — the first-order sensory nuclei the atlas names that reach
+the motor set. That is **our convention, not the animal's**, adopted on
+reachability before any game (`PREREGISTRATION.md`), and the page shows it as
+a warning beside the fish. `docs/fish1-mapping.md` has the numbers.
 
 **"Both sexes of fly" may not be two brains.** The female (FlyWire/FAFB) is a
 whole adult brain. The best-known male *Drosophila* volume is MANC, the male
@@ -102,7 +104,7 @@ tools/build_web_agent.sh ../OpenDoctrines     # web/agent: the game, patched for
 .venv/bin/python tools/export_celegans.py     # WormWiring + Wang et al. 2024
 .venv/bin/python tools/export_ciona.py        # eLife 16962 source data
 ~/fish1-venv/bin/python tools/fish1_regions.py   # Fish1: soma -> published MECE brain region
-~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention mece-ganglia-v1
+~/fish1-venv/bin/python tools/fish1_export.py --sensory-convention brain-nuclei-v1
                                               # Fish1; needs a personal CAVE token, ~40 min
 node tools/calibrate.mjs --write              # the preregistered rule; no game is played
 tools/serve.sh                                # http://localhost:8102

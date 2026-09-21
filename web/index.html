@@ -1170,8 +1170,10 @@ function renderPresets() {
   if (has("c_elegans_herm") && has("ciona_larva")) P.push(["Worm vs sea squirt", [{ species: "c_elegans_herm" }, { species: "ciona_larva" }]]);
   const actors = playable().filter((s) => !isWatcher(s));
   if (actors.length > 2) P.push(["Everyone who can play", actors.slice(0, MAX_SEATS).map((s) => ({ species: s.id }))]);
-  const fish = playable().find(isWatcher);
-  if (fish && actors.length) P.push([`A ${shortLabel(fish).toLowerCase()} in a tank`, [{ species: actors[0].id }, { species: fish.id }]]);
+  // The fish in its tank: against the fly when it can play, beside it as a
+  // watcher when a later export finds its senses cut off again.
+  const fish = playable().find((s) => s.id === "zebrafish_larva");
+  if (fish && actors.length) P.push([isWatcher(fish) ? "A zebrafish in a tank" : "Zebrafish vs fruit fly", [{ species: fish.id }, { species: actors.find((a) => a.id !== fish.id).id }]]);
   $("presets").innerHTML = P.map(([name], i) => `<button type="button" data-p="${i}">${esc(name)}</button>`).join("");
   $("presets").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { plan = P[+b.dataset.p][1].map((x) => ({ iso: "", shuffled: false, ...x })); renderSeatRows(); }));
   return P;
