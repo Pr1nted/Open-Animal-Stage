@@ -1,0 +1,116 @@
+<p><strong>Open Fly put one fruit-fly brain in front of a strategy game.</strong> This is the
+sequel nobody asked the animals about: seven mapped brains, from a 302-neuron roundworm to a
+zebrafish larva, take seats in the same world of <a href="https://pr1nted.itch.io/open-doctrines">Open Doctrines</a>
+and play against each other. A mouse's visual cortex watches.</p>
+
+<p>Now the part that is true. Every brain here is a <strong>simplified model</strong> built on a
+published wiring diagram. It runs on your machine, turn after turn, and every order its country
+gives comes from its spikes. Nothing is pre-recorded, and nothing was trained.</p>
+
+<h2>Who plays</h2>
+
+<ul>
+<li><strong>Fruit fly, adult female</strong>: 138,639 neurons (FlyWire). Open Fly's brain, spike for spike.</li>
+<li><strong>Fruit fly, adult male</strong>: 166,700 neurons (MaleCNS v1.0), with the female's mapping and constants.</li>
+<li><strong>Zebrafish larva, 7 days old</strong>: 187,052 cell bodies (Fish1).</li>
+<li><strong>Sea squirt larva</strong>: 207 neurons, with its gap junctions (Ryan et al. 2016).</li>
+<li><strong>Roundworm, hermaphrodite</strong>: 302 neurons, with gap junctions (Cook et al. 2019). <em>Local only.</em></li>
+<li><strong>Roundworm, male</strong>: 385 neurons, with gap junctions (Cook et al. 2019). <em>Local only.</em></li>
+<li><strong>Fruit fly, larva</strong>: 2,952 neurons (Winding et al. 2023). <em>Local only.</em></li>
+</ul>
+
+<p><strong>Local only means this page cannot serve it.</strong> The two worms and the fly larva come
+from datasets published with no licence that allows us to redistribute them. The page lists them and
+says why. They play in a copy you build and run yourself from the published data.</p>
+
+<h2>How a brain plays a strategy game</h2>
+
+<p>It does not know it is playing one. Each turn, what happened to its country becomes four numbers,
+worked out the same way for every animal:</p>
+
+<ul>
+<li><strong>Reward</strong>: land gained, and a budget in surplus.</li>
+<li><strong>Harm</strong>: land lost, a budget in deficit, and new wars.</li>
+<li><strong>Reserve</strong>: money in the treasury.</li>
+<li><strong>Threat</strong>: how many wars it is fighting.</li>
+</ul>
+
+<p>Each number drives a group of that animal's own sensory neurons, named from its dataset's
+annotations. For the adult flies these are sugar, bitter and water taste neurons and the antenna's
+Johnston's organ. For the worm they are chemosensory, nociceptive, oxygen and touch neurons. Then the
+brain runs for 200 milliseconds of simulated time. Its motor set (descending neurons in the flies, motor
+neurons in the worms and the sea squirt) is dealt into 39 groups, one for each action the game offers,
+and the groups that fire most decide what the country does.</p>
+
+<p>That mapping is ours, not the animals'. It was written down before each species played a single
+turn. Where a dataset was missing something, we filled the gap with a stated convention, and the page
+shows it as a warning beside the animal. Two examples: the zebrafish senses through four brain nuclei,
+because its sense organs are not yet connected in the traced data, and the fly larva's sensory neurons
+are assumed to be excitatory.</p>
+
+<h2>A stage with two animals compares two mappings</h2>
+
+<p><strong>A stage with two animals on it compares two mappings we wrote, not two animals.</strong> If
+a fly outlasts a worm, that says something about the way we turned a fly's senses and neurons into a
+game, and almost nothing about flies and worms. So the page never announces that one species beat another.</p>
+
+<p>The fair opponent is the same brain with its <strong>wiring shuffled</strong>: the same neurons, with the
+connections between them moved at random, set to be about as active as the real one. Any animal can
+play against its shuffled self. With its real wiring the fly is more active and more aggressive than
+with shuffled wiring, and against the game's AI that loses land.</p>
+
+<h2>The mouse watches</h2>
+
+<p>The mouse does not play. Its dataset, MICrONS, is a cubic millimetre of visual cortex: beautiful,
+and with no motor output, because it is not a whole brain. Seating it would mean supplying the rest
+of the animal ourselves.</p>
+
+<p>So the mouse does what the data can do. Each turn the world map is shown to the <strong>MICrONS
+digital twin</strong>, a published model trained on recordings from the same mouse whose cortex was
+later reconstructed. The page draws what the model predicts 8,221 of that mouse's recorded neurons would
+do. You can also look at the room through the mouse's eyes: low resolution and two colours, green and
+ultraviolet. That view is a simulation of its optics, not a recording.</p>
+
+<h2>What it is not</h2>
+
+<p>No animals were harmed, because nothing here is alive. None of these models learned to play, none
+knows it is playing, and none of them can feel anything. They are simplifications: leaky
+integrate-and-fire neurons on wiring diagrams, several of them incomplete. The competence of any seat
+comes mostly from our mapping, and the page says so.</p>
+
+<h2>Pick the world</h2>
+
+<ul>
+<li>Choose who sits down, how many (up to eight seats), and whether each one has its own wiring or a shuffled copy.</li>
+<li>Choose any map that ships with Open Doctrines, or import your own <code>.odmap</code> from the game's map editor.</li>
+<li>Every animal plays the same 120 turns in the same world.</li>
+</ul>
+
+<h2>Play it yourself</h2>
+
+<p><a href="https://pr1nted.itch.io/open-doctrines">Open Doctrines</a> is a free, source-available grand
+strategy game that runs in your browser, with a map editor and multiplayer. If you only want the fly,
+<a href="https://pr1nted.itch.io/open-fly">Open Fly</a> is the one-animal version this page grew out of.
+You will almost certainly do better than any of them.</p>
+
+<h2>Credits and licences</h2>
+
+<ul>
+<li>Neuron model: Shiu et al., "A Drosophila computational brain model reveals sensorimotor processing", <em>Nature</em> 634 (2024). Model code MIT. Ported to JavaScript for Open Fly and used here for every species.</li>
+<li>Fruit fly, adult female: <a href="https://flywire.ai">FlyWire</a>, Princeton University and collaborators, public release 783, licensed under <a href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a> (non-commercial). Cite Dorkenwald et al., "Neuronal wiring diagram of an adult brain", and Schlegel et al., "Whole-brain annotation and multi-connectome cell typing of <em>Drosophila</em>", <em>Nature</em> 634 (2024).</li>
+<li>Fruit fly, adult male: <a href="https://male-cns.janelia.org/">MaleCNS v1.0</a>, FlyEM (HHMI Janelia) with the University of Cambridge, the MRC Laboratory of Molecular Biology and Google Research, licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Taste-neuron identities from Tastekin et al. (bioRxiv, doi:10.1101/2025.08.25.671814).</li>
+<li>Zebrafish larva: Fish1 (fish1_v250915, materialization 704), Lichtman and Engert labs (Harvard) with Google Connectomics, used under the Fish1 Open Access Policy. Cite Petkova, Januszewski, Blakely, Herrera, Schuhknecht et al., "A connectomic resource for neural cataloguing and circuit dissection of the larval zebrafish brain", bioRxiv 2025, doi:10.1101/2025.06.10.658982. Brain regions from the Z-Brain atlas (Randlett et al. 2015) as warped onto Fish1.</li>
+<li>Sea squirt larva: Ryan, Lu and Meinertzhagen, "The CNS connectome of a tadpole larva of <em>Ciona intestinalis</em> (L.) highlights sidedness in the brain of a chordate sibling", <em>eLife</em> 5:e16962 (2016), doi:10.7554/eLife.16962, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Transmitters: Kourakis et al., <em>eLife</em> 8:e44753 (2019), doi:10.7554/eLife.44753, CC BY 4.0.</li>
+<li>Roundworms (local only): Cook et al., "Whole-animal connectomes of both <em>Caenorhabditis elegans</em> sexes", <em>Nature</em> 571:63-71 (2019), doi:10.1038/s41586-019-1352-7, via WormWiring.org (Emmons lab). No open licence is stated, so it is not redistributed here. Transmitters: Wang et al., <em>eLife</em> 13:RP95402 (2024), doi:10.7554/eLife.95402, CC BY 4.0.</li>
+<li>Fruit fly larva (local only): Winding et al., "The connectome of an insect brain", <em>Science</em> 379:eadd9330 (2023), Data S1, with transmitter annotations from the public Virtual Fly Brain L1 CNS CATMAID. No open licence is stated, so it is not redistributed here.</li>
+<li>Mouse: <a href="https://www.microns-explorer.org/">MICrONS</a> cubic millimetre (MICrONS Consortium), and the digital twin of Wang et al., "Foundation model of neural activity predicts response to new stimulus types", <em>Nature</em> 640:470 (2025), doi:10.1038/s41586-025-08829-y. MICrONS data CC BY 4.0; twin code MIT (cajal/fnn); the released twin weights state no licence. Connectome matching from Ding, Fahey, Papadopoulos et al. (2025), doi:10.1038/s41586-025-08840-3.</li>
+<li>Game: <a href="https://pr1nted.itch.io/open-doctrines">Open Doctrines</a>, running as WebAssembly.</li>
+</ul>
+
+<p>Because the female fly's connectome is CC BY-NC, nothing on this page asks for money.</p>
+
+<p><strong>Made by Pr1nted.</strong></p>
+
+<p><em>You need a recent desktop browser. The adult flies are the heavy seats: the female's wiring is
+a 91 MB download and the male's 150 MB. The brains run on your CPU in background threads, one per
+animal, so a laptop's fan may notice.</em></p>

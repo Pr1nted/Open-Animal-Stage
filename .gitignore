@@ -23,3 +23,6 @@ data/raw/
 web/species/
 data/lif_reference.json
 web/agent/
+
+# Rendered video and frames (tools/trailer).
+out/

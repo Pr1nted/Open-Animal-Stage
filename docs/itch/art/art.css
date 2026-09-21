@@ -1,0 +1,51 @@
+/* The itch art: one stylesheet for cover, banner and thumbnail. The palette is
+   web/index.html's :root; the console lines are Open Fly's (Press Start 2P). */
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=Press+Start+2P&display=block");
+:root {
+  --room: #0C1113; --paper: #EDE6D6; --muted: #8F9A97; --amber: #F2B84B; --teal: #6FB7AE;
+  --edge: rgba(237, 230, 214, 0.14);
+  --pixel: "Press Start 2P", monospace; --mono: "JetBrains Mono", monospace; --body: "Figtree", sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: var(--w); height: var(--h); overflow: hidden; background: var(--room); color: var(--paper); }
+body { position: relative; font-family: var(--body); }
+
+/* the room: a faint lattice of neurons, two teal layers and a sparse amber one */
+body::before { content: ""; position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(120% 70% at 70% 0%, rgba(111, 183, 174, 0.10), transparent 60%),
+    radial-gradient(circle, rgba(111, 183, 174, 0.22) 0 1px, transparent 1.6px) 0 0 / 37px 41px,
+    radial-gradient(circle, rgba(111, 183, 174, 0.12) 0 1px, transparent 1.6px) 13px 29px / 83px 71px,
+    radial-gradient(circle, rgba(242, 184, 75, 0.45) 0 1.2px, transparent 2px) 101px 53px / 223px 197px; }
+/* Open Fly's scanlines and its gold top edge, in this project's amber */
+body::after { content: ""; position: absolute; inset: 0; z-index: 50; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0, 0, 0, 0.16) 2px 3px);
+  border-top: var(--rail, 6px) solid var(--amber); box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.55); }
+
+/* the stations: one lit window per animal */
+.wall { position: absolute; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap, 12px); }
+.st { position: relative; overflow: hidden; border-radius: 8px; border: 1px solid var(--edge);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55); aspect-ratio: 4 / 3; background: #1a2124; }
+.st img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(0.92) brightness(0.9); }
+.st::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 45%, rgba(12, 17, 19, 0.92) 100%),
+              radial-gradient(130% 110% at 50% 40%, transparent 55%, rgba(12, 17, 19, 0.45)); }
+.st .cap { position: absolute; left: var(--cp, 10px); right: var(--cp, 10px); bottom: var(--cb, 8px); z-index: 2; }
+.st .cap b { display: flex; align-items: center; gap: 6px; font: 700 var(--cn, 15px)/1.15 var(--body); color: var(--paper); }
+.st .cap b i { width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); flex: none; }
+.st .cap span { display: block; font: 400 var(--cs, 11px)/1.35 var(--mono); color: #b9c2bf; }
+.st .cap s, .st .cap u { text-decoration: none; }
+.st .tag { position: absolute; top: var(--tp, 8px); right: var(--tp, 8px); z-index: 2; font: 600 var(--ct, 9.5px)/1 var(--mono);
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 6px; border-radius: 4px;
+  background: rgba(12, 17, 19, 0.78); color: var(--muted); border: 1px solid var(--edge); }
+.st.watch { border: 1px solid rgba(111, 183, 174, 0.8); box-shadow: 0 0 0 1px rgba(111, 183, 174, 0.25), 0 0 26px rgba(111, 183, 174, 0.25); }
+.st.watch .tag { color: var(--teal); border-color: rgba(111, 183, 174, 0.6); }
+
+/* the console titles */
+.title { position: absolute; z-index: 3; }
+.prompt { font: var(--pp, 11px)/1.6 var(--pixel); color: var(--teal); opacity: 0.9; white-space: nowrap; }
+.logo { display: block; image-rendering: pixelated; }
+.lede { font: 400 var(--lf, 19px)/1.3 var(--mono); color: var(--paper); }
+.game { font: var(--gf, 22px)/1.35 var(--pixel); color: var(--amber); text-shadow: 0 0 14px rgba(242, 184, 75, 0.35); white-space: nowrap; }
+.foot { font: 400 var(--ff, 14px)/1.5 var(--pixel); color: var(--teal); white-space: nowrap; }
+.foot::after { content: ""; display: inline-block; width: 0.8em; height: 1em; margin-left: 0.5em; vertical-align: -0.12em; background: var(--teal); }

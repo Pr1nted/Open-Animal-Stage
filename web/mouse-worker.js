@@ -16,6 +16,32 @@ importScripts(ORT + "ort.webgpu.min.js");
 ort.env.wasm.wasmPaths = ORT;
 
 let sess = null, meta = null, state = null, looks = 0, ep = "";
+
+// THE MODEL IN PARTS. At 36.6 MB it is over the 25 MiB a static host accepts
+// per file, so a published build carries model.onnx.part.* and a manifest
+// (tools/pack_web.py). The parts are joined and checked against the manifest's
+// sha256 before the runtime sees a byte; a local build may have the whole file.
+async function loadModel(base) {
+  const man = await fetch(new URL("model.pack.json", base));
+  if (man.ok && (man.headers.get("content-type") || "").includes("json")) {
+    const m = await man.json();
+    const parts = await Promise.all(m.parts.map(async (name) => {
+      for (let attempt = 1; ; attempt++) {
+        try { const r = await fetch(new URL(name, base)); if (!r.ok) throw new Error(`${name}: ${r.status}`); return new Uint8Array(await r.arrayBuffer()); }
+        catch (err) { if (attempt >= 4) throw err; await new Promise((res) => setTimeout(res, 500 * attempt)); }
+      }
+    }));
+    const whole = new Uint8Array(m.size); let off = 0;
+    for (const p of parts) { whole.set(p, off); off += p.length; }
+    if (off !== m.size) throw new Error(`model parts are ${off} bytes, the manifest says ${m.size}`);
+    const hex = [...new Uint8Array(await crypto.subtle.digest("SHA-256", whole))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (hex !== m.sha256) throw new Error("model parts do not match the manifest's checksum");
+    return whole.buffer;
+  }
+  const r = await fetch(new URL("model.onnx", base));
+  if (!r.ok) throw new Error(`model.onnx answered ${r.status}`);
+  return r.arrayBuffer();
+}
 const zeros2 = () => new ort.Tensor("float32", new Float32Array(2), [1, 2]);
 
 self.onmessage = async (e) => {
@@ -23,9 +49,7 @@ self.onmessage = async (e) => {
   try {
     if (msg.type === "load") {
       meta = await (await fetch(new URL("mouse.json", new URL(msg.base, self.location.href)))).json();
-      const r = await fetch(new URL("model.onnx", new URL(msg.base, self.location.href)));
-      if (!r.ok) throw new Error(`model.onnx answered ${r.status}`);
-      const buf = await r.arrayBuffer();
+      const buf = await loadModel(new URL(msg.base, self.location.href));
       const tried = [];
       for (const want of ["webgpu", "wasm"]) {
         try { sess = await ort.InferenceSession.create(buf, { executionProviders: [want] }); ep = want; break; }

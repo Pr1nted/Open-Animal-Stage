@@ -646,9 +646,12 @@
       "status": "station-only",
       "why_no_seat": "a cubic millimetre of visual cortex has no motor output, because it is not a whole brain",
       "functional": "~75,000 pyramidal neurons with recorded responses to visual stimuli",
-      "export": null,
-      "redistribute": null,
-      "redistribute_why": "MICrONS data is CC BY 4.0 but the twin's released weights state no licence"
+      "export": {
+        "licence": "MICrONS (IARPA MICrONS, mouse 17797, minnie65): data CC BY 4.0. Digital twin: Wang et al., 'Foundation model of neural activity predicts response to new stimulus types', Nature 640:470 (2025); code github.com/cajal/fnn (MIT); weights from the BossDB MICrONS release, which states no licence. Cite: MICrONS Consortium, Nature 640 (2025), and Wang et al. (2025).",
+        "source": "s3://bossdb-open-data/iarpa_microns/minnie/functional_data/ (see docs/mouse.md)"
+      },
+      "redistribute": true,
+      "redistribute_why": "MICrONS data is CC BY 4.0; the digital twin's released weights (BossDB, foundational_model_weights_and_metadata_v1) state no licence, and are shipped on the owner's decision, with credit to the MICrONS Consortium and Wang et al. 2025"
     }
   ]
 }

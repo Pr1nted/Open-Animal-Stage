@@ -74,9 +74,12 @@ def main():
     os.makedirs(os.path.join(out, "species"), exist_ok=True)
     for sid, _, _, _ in ship:
         src = os.path.join(web, "species", sid)
-        packed = os.path.exists(os.path.join(src, "connectome.pack.json"))
-        shutil.copytree(src, os.path.join(out, "species", sid),
-                        ignore=(lambda d, names: ["connectome.bin"] if packed and "connectome.bin" in names else []))
+        # Any file shipped in parts (<stem>.pack.json beside it) leaves the
+        # whole original behind: the fly brains, and the mouse's 36.6 MB model.
+        def whole_files_with_parts(d, names):
+            return [n for n in names if "." in n and not n.endswith(".json") and ".part." not in n
+                    and n.rsplit(".", 1)[0] + ".pack.json" in names]
+        shutil.copytree(src, os.path.join(out, "species", sid), ignore=whole_files_with_parts)
     # A licence file naming every source that reached dist/, because CC-BY is
     # only satisfied by actually attributing.
     lines = ["Sources of everything served from this directory.", ""]

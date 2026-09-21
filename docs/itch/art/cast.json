@@ -1,0 +1,118 @@
+{
+ "cast": [
+  [
+   "drosophila_female",
+   "flies/drosophila_female_front34.png",
+   "Fruit fly",
+   "adult female",
+   "138,639 neurons",
+   "plays"
+  ],
+  [
+   "drosophila_male",
+   "flies/drosophila_male_front34.png",
+   "Fruit fly",
+   "adult male",
+   "166,700 neurons",
+   "plays"
+  ],
+  [
+   "zebrafish_larva",
+   "vertebrates/zebrafish_larva_closeup.png",
+   "Zebrafish",
+   "larva, 7 days",
+   "187,052 somas",
+   "plays"
+  ],
+  [
+   "drosophila_larva",
+   "flies/drosophila_larva_front34.png",
+   "Fruit fly",
+   "larva",
+   "2,952 neurons",
+   "plays"
+  ],
+  [
+   "c_elegans_herm",
+   "worms/c_elegans_herm_wave_34.png",
+   "Roundworm",
+   "hermaphrodite",
+   "302 neurons",
+   "plays"
+  ],
+  [
+   "c_elegans_male",
+   "worms/c_elegans_male_wave_34.png",
+   "Roundworm",
+   "male",
+   "385 neurons",
+   "plays"
+  ],
+  [
+   "ciona_larva",
+   "worms/ciona_larva_wave_34.png",
+   "Sea squirt",
+   "larva",
+   "207 neurons",
+   "plays"
+  ],
+  [
+   "mouse_v1",
+   "vertebrates/mouse_v1_front34.png",
+   "Mouse",
+   "visual cortex",
+   "8,221 recorded neurons",
+   "watches"
+  ]
+ ],
+ "boxes": {
+  "drosophila_female": [
+   172,
+   186,
+   828,
+   678
+  ],
+  "drosophila_male": [
+   161,
+   182,
+   833,
+   686
+  ],
+  "zebrafish_larva": [
+   0,
+   0,
+   800,
+   800
+  ],
+  "drosophila_larva": [
+   228,
+   189,
+   757,
+   585
+  ],
+  "c_elegans_herm": [
+   140,
+   83,
+   1223,
+   895
+  ],
+  "c_elegans_male": [
+   84,
+   73,
+   1235,
+   936
+  ],
+  "ciona_larva": [
+   262,
+   122,
+   1262,
+   872
+  ],
+  "mouse_v1": [
+   40,
+   200,
+   680,
+   680
+  ]
+ }
+}

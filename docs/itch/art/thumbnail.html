@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>thumbnail 1280x720</title>
+<link rel="stylesheet" href="art.css">
+<style>
+  :root { --w: 1280px; --h: 720px; --gap: 14px; }
+  .wall { left: 40px; right: 40px; top: 34px; }
+  .title { left: 40px; right: 40px; bottom: 36px; display: grid; grid-template-columns: auto 1fr; column-gap: 40px; align-items: end; }
+  .title .prompt { grid-column: 1 / -1; margin-bottom: 14px; --pp: 12px; }
+  .logo { height: 104px; }
+  .right { padding-bottom: 2px; }
+  .lede { --lf: 19px; }
+  .game { --gf: 26px; margin: 4px 0 12px; }
+  .foot { --ff: 12px; }
+</style>
+<div class="wall"></div>
+<div class="title">
+  <div class="prompt">pr1nted@itch.io:~$ ./open-animal-stage</div>
+  <img class="logo" src="../../brand/logo.svg" alt="Open Animal Stage">
+  <div class="right">
+    <div class="lede">mapped animal brains play each other at</div>
+    <div class="game">OPEN DOCTRINES</div>
+    <div class="foot">one world · live in your browser</div>
+  </div>
+</div>
+<script src="wall.js"></script>
