@@ -96,6 +96,13 @@
   .now span { color: var(--muted); font-size: 12.5px; }
   .spark canvas { width: 100%; height: 48px; display: block; }
 
+  .pov { position: fixed; right: 20px; top: 76px; width: 380px; border-radius: 14px; padding: 14px; display: grid; gap: 8px; z-index: 5; }
+  .pov[hidden] { display: none; }
+  .pov strong { font: 600 12px/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
+  .pov p { margin: 0; font-size: 12px; color: var(--muted); }
+  .pov canvas { width: 100%; border-radius: 8px; background: #000; }
+  body.in-pov .rail, body.in-pov .setup, body.in-pov .ident p { display: none; }
+  #stage.mouse-eye { filter: url(#mouse-dichromat) blur(3px); image-rendering: auto; }
   .loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--room); z-index: 10; transition: opacity .5s; }
   .loading[data-done="true"] { opacity: 0; pointer-events: none; }
   .loading div { text-align: center; max-width: 440px; padding: 0 16px; }
@@ -157,6 +164,22 @@
   <div class="spark"><canvas id="spark" aria-label="Land held by each animal, turn by turn"></canvas></div>
 </div>
 
+<!-- MOUSE VISION. Mice have two cone types, M (~510 nm, green) and S
+     (~360 nm, ultraviolet), and none tuned to red, so red reads as dark. The
+     matrix below maps the screen's RGB onto that: an M channel shown as green,
+     an S channel shown as blue-violet, and no red. It is a simulation of a
+     dichromat on a screen that cannot show ultraviolet, and is labelled so. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="mouse-dichromat" color-interpolation-filters="linearRGB">
+  <feColorMatrix type="matrix" values="0.08 0.24 0.02 0 0   0.12 0.78 0.10 0 0   0.02 0.18 0.80 0 0   0 0 0 1 0"/>
+</filter></svg>
+<aside class="pov glass" id="pov" hidden>
+  <strong>Through the mouse's eyes</strong>
+  <p>The room from the mouse's head, as a mouse's eye resolves it: about 1% of human sharpness, and two colours, green and ultraviolet, with no red. A simulation of its optics, not a recording.</p>
+  <strong>What its cortex is given</strong>
+  <canvas id="povRF" width="512" height="288" aria-label="The frame shown to the mouse's visual cortex, with each recorded neuron placed where it looks"></canvas>
+  <p id="povCaption">The grey frame the digital twin is shown. Each dot is one of mouse 17797's recorded neurons, placed at the centre of its receptive field; bright means the model predicts it above its usual level for this map.</p>
+  <button type="button" id="povExit">Leave the mouse's view</button>
+</aside>
 <div class="loading" id="loading"><div><strong>Opening the room</strong><p id="loadText">Loading&hellip;</p></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -824,7 +847,7 @@ function modelled(id) {
 }
 
 const ANIMALS = { drosophila_female: () => makeFly(false), drosophila_male: () => makeFly(true), drosophila_larva: makeLarva, c_elegans_herm: () => makeWorm(false), c_elegans_male: () => makeWorm(true), ciona_larva: makeCiona, zebrafish_larva: makeFish, mouse_v1: makeMouse };
-const HOUSING = { drosophila_female: "keyboard", drosophila_male: "keyboard", drosophila_larva: "keyboard", c_elegans_herm: "dish", c_elegans_male: "dish", ciona_larva: "dish", zebrafish_larva: "tank", mouse_v1: "desk" };
+const HOUSING = { drosophila_female: "keyboard", drosophila_male: "keyboard", drosophila_larva: "dish", c_elegans_herm: "dish", c_elegans_male: "dish", ciona_larva: "dish", zebrafish_larva: "tank", mouse_v1: "desk" };
 
 // ---------------------------------------------------------------- a brain beside each animal
 const BRAIN_SHAPE = { c_elegans_herm: [1, 0.18, 0.18], c_elegans_male: [1, 0.18, 0.18], ciona_larva: [1, 0.3, 0.3], drosophila_larva: [0.8, 0.5, 0.5], zebrafish_larva: [1, 0.45, 0.4] };
@@ -938,14 +961,28 @@ function buildStation(seat, i, n) {
     } else if (housing === "dish") {
       const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.025, 48, 1, true), new THREE.MeshStandardMaterial({ color: 0xcfe6ea, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
       dish.position.set(0, deskTop + 0.0125, 0.05); g.add(dish);
-      const sea = seat.species.id === "ciona_larva";
+      const sea = seat.species.id === "ciona_larva", food = seat.species.id === "drosophila_larva";
       if (sea) {
         // Sea water in a glass dish: the tadpole swims, it does not crawl.
         const water = new THREE.Mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.022, 48), new THREE.MeshStandardMaterial({ color: 0x2f6f82, roughness: 0.1, transparent: true, opacity: 0.35, depthWrite: false }));
         water.position.set(0, deskTop + 0.011, 0.05); g.add(water);
         g.add(mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.002, 48), std(0x1d3a44, { roughness: 0.6 }), 0, deskTop + 0.001, 0.05));
+      } else if (food) {
+        // A LARVA LIVES IN ITS FOOD. On the keyboard the 0.31 m maggot lay
+        // across a 0.15 m-deep keyboard with both ends in the air. Here it gets
+        // what a lab larva crawls in: cornmeal-molasses fly food, with the
+        // grooves larvae dig and a few flecks of yeast.
+        const cv = document.createElement("canvas"); cv.width = cv.height = 256; const c = cv.getContext("2d");
+        c.fillStyle = "#b8903e"; c.fillRect(0, 0, 256, 256);
+        let a = 7; const r = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+        for (let k = 0; k < 900; k++) { c.fillStyle = r() < 0.5 ? "rgba(90,60,20,0.25)" : "rgba(235,205,130,0.3)"; c.fillRect(r() * 256, r() * 256, 1 + r() * 3, 1 + r() * 3); }
+        c.strokeStyle = "rgba(80,55,20,0.35)"; c.lineWidth = 2;
+        for (let k = 0; k < 14; k++) { c.beginPath(); let x = r() * 256, y = r() * 256; c.moveTo(x, y); for (let j = 0; j < 8; j++) { x += (r() - 0.5) * 40; y += (r() - 0.5) * 40; c.lineTo(x, y); } c.stroke(); }
+        c.fillStyle = "rgba(245,240,225,0.8)"; for (let k = 0; k < 40; k++) { c.beginPath(); c.arc(r() * 256, r() * 256, 1 + r() * 2, 0, 7); c.fill(); }
+        const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+        g.add(mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.012, 48), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }), 0, deskTop + 0.006, 0.05));
       } else g.add(mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.008, 48), std(0x4a4436, { roughness: 0.95, transparent: true, opacity: 0.97 }), 0, deskTop + 0.004, 0.05));
-      animal.root.position.set(0, deskTop + (sea ? 0.004 : 0.008), 0.05);
+      animal.root.position.set(0, deskTop + (sea ? 0.004 : food ? 0.012 : 0.008), 0.05);
       if (seat.species.id.startsWith("c_elegans")) {
         // A worm plate: a lawn of E. coli on the agar, and the tracks a worm
         // leaves in it. The sea squirt's dish is sea water and gets neither.
@@ -1010,10 +1047,12 @@ function layoutViews(seats) {
   }
   $("views").innerHTML = `<button type="button" data-view="wide">Everyone</button><button type="button" data-view="world">The world</button>` +
     seats.map((s, i) => `<button type="button" data-view="seat${i}"><i style="background:${s.color}"></i>${esc(shortLabel(s.species))}${s.shuffled ? " (shuffled)" : ""}</button>`).join("") +
-    (G.mouse ? `<button type="button" data-view="mouse"><i style="background:${MOUSE_COLOR}"></i>Mouse (watching)</button>` : "");
+    (G.mouse ? `<button type="button" data-view="mouse"><i style="background:${MOUSE_COLOR}"></i>Mouse (watching)</button><button type="button" data-view="mouseeyes">Through its eyes</button>` : "");
   document.querySelectorAll(".views button").forEach((b) => b.addEventListener("click", () => {
     // A second press on a seat swaps between the animal and its brain.
     const v = b.dataset.view;
+    if (v === "mouseeyes") { enterMouseEyes(); pressView("mouseeyes"); return; }
+    exitMouseEyes();
     const twin = v === "mouse" ? "brainmouse" : v.replace("seat", "brain");
     goTo((v.startsWith("seat") || v === "mouse") && activeView === v ? twin : v);
     if (activeView === twin) b.setAttribute("aria-pressed", "true");
@@ -1067,9 +1106,75 @@ function mouseLook() {
     const a = m.st.brain.activity; let above = 0;
     for (let u = 0; u < r.response.length; u++) { const v = r.response[u]; if (v > 1) above++; a[u] = Math.max(a[u], Math.min(1, Math.max(0, (v - 0.8) * 0.9))); }
     m.above = above; m.st.driveTarget = Math.min(1, above / (0.3 * r.response.length));
+    m.lastResponse = r.response; if (pov) drawMouseRF();
     drawMouseMonitor(m); showBoard();
   }).catch((e) => { m.busy = false; m.state = "fault"; m.stateLine = String(e.message || e).slice(0, 80); showBoard(); });
 }
+// ---------------------------------------------------------------- through the mouse's eyes
+// The camera sits in the mouse's head and looks at its screen. Acuity: a mouse
+// resolves about 0.5 cycles per degree (a human about 60), so the scene is
+// rendered at roughly two samples per degree of a wide field of view and
+// smoothed up, plus the dichromat filter above. The panel beside it is the
+// data rather than optics: the frame the twin is shown, and every recorded
+// neuron at its receptive-field centre, lit by the twin's latest prediction.
+let pov = null;
+const MOUSE_FOV = 110;
+function enterMouseEyes() {
+  if (!G.mouse || pov) return;
+  pov = { fov: camera.fov, ratio: renderer.getPixelRatio() };
+  camera.fov = MOUSE_FOV;
+  camera.clearViewOffset();
+  // ~2 samples per degree across the view, whatever the window's width.
+  renderer.setPixelRatio(Math.max(0.05, (MOUSE_FOV * 2) / innerWidth));
+  resize(true);
+  canvas.classList.add("mouse-eye");
+  document.body.classList.add("in-pov");
+  $("pov").hidden = false;
+  tween = null;
+  drawMouseRF();
+}
+function exitMouseEyes() {
+  if (!pov) return;
+  camera.fov = pov.fov; renderer.setPixelRatio(pov.ratio); pov = null;
+  canvas.classList.remove("mouse-eye");
+  document.body.classList.remove("in-pov");
+  $("pov").hidden = true;
+  resize();
+}
+$("povExit").addEventListener("click", () => { exitMouseEyes(); goTo("wide"); });
+function followMouseEyes() {
+  const m = G.mouse; if (!pov) return;
+  if (!m || !m.st) { exitMouseEyes(); return; }       // the next game has no mouse
+  const head = m.st.animal.root.getObjectByName("head") || m.st.animal.root;
+  const neck = new THREE.Vector3(); head.getWorldPosition(neck);
+  const screen = new THREE.Vector3(m.st.g.position.x, m.st.deskTop + 0.42, -0.277);
+  // The head bone is the neck joint: a camera there saw the inside of its own
+  // skull, its eyes and its ears. The eyes are ~6 cm on towards the screen
+  // and a little up, so the view starts just in front of them.
+  const fwd = screen.clone().sub(neck).setY(0).normalize();
+  const eye = neck.clone().addScaledVector(fwd, 0.075); eye.y += 0.02;
+  camera.position.copy(eye);
+  const to = lookFrom(eye.toArray(), screen.toArray());
+  yaw = to.yaw; pitch = to.pitch; applyCamera();
+}
+function drawMouseRF() {
+  const m = G.mouse, c = $("povRF").getContext("2d"), W = 512, H = 288;
+  c.fillStyle = "#000"; c.fillRect(0, 0, W, H);
+  if (!m || !m.frame) return;
+  c.globalAlpha = 0.55; c.imageSmoothingEnabled = true; c.drawImage(m.frame, 0, 0, W, H); c.globalAlpha = 1;
+  if (!m.meta || !m.lastResponse) { $("povCaption").textContent = "Waiting for the mouse's first look at the map."; return; }
+  const rf = m.meta.units.rf_xy, r = m.lastResponse;
+  // Quiet neurons first, so the responding ones are drawn on top.
+  const order = [...r.keys()].sort((a, b) => r[a] - r[b]);
+  for (const u of order) {
+    const [x, y] = rf[u]; if (x == null) continue;
+    const v = Math.max(0, Math.min(1, (r[u] - 0.6) / 1.4));
+    c.fillStyle = `rgba(${Math.round(90 + 165 * v)},${Math.round(140 + 60 * v)},${Math.round(255 - 180 * v)},${0.25 + 0.7 * v})`;
+    c.beginPath(); c.arc(((x + 1) / 2) * W, ((y + 1) / 2) * H, 1.2 + 2.2 * v, 0, 7); c.fill();
+  }
+  $("povCaption").textContent = `The grey frame the digital twin is shown. Each dot is one of mouse 17797's ${fmt.format(m.meta.n)} recorded neurons, at the centre of its receptive field; bright means predicted above its usual level (${fmt.format(m.above)} are, after ${m.looks} look${m.looks > 1 ? "s" : ""}). Predictions of a model fitted to its recordings.`;
+}
+
 function drawMouseMonitor(m) {
   const { c, cv, tex } = m.st.screen, W = cv.width, H = cv.height;
   c.fillStyle = "#0c0e14"; c.fillRect(0, 0, W, H);
@@ -1147,12 +1252,13 @@ function showBoard() {
     const t = s.turns[s.turns.length - 1], p = t && t.pos;
     const d = p && s.start != null ? p.share - s.start : 0;
     const state = s.watcher && s.state !== "dead" && s.state !== "fault" ? `<span class="state think">watching</span>`
-      : s.state === "dead" ? `<span class="state dead">wiped out</span>` : s.state === "fault" ? `<span class="state fault">brain faulted</span>`
+      : s.state === "dead" ? `<span class="state dead">wiped out${s.harmTurns ? " · harm at maximum" : ""}</span>` : s.state === "fault" ? `<span class="state fault">brain faulted</span>`
       : s.state === "think" ? `<span class="state think">thinking…</span>` : s.state === "load" ? `<span class="state think">${esc(s.stateLine || "loading")}</span>` : `<span class="state">${t ? `${(t.ms / 1000).toFixed(2)} s` : ""}</span>`;
     return `<div class="card" style="--c:${s.color}"><div class="who"><strong>${esc(s.title)}${s.shuffled ? " · shuffled" : ""}</strong>${state}</div>
       <div class="who"><span>${esc(s.country ? s.country.name : "—")}</span><span>${fmt.format(s.meta ? s.meta.n : 0)} neurons</span></div>
       <div class="nums"><div><small>Land</small>${p ? p.share.toFixed(2) + "%" : "—"}</div><div><small>Change</small><span class="${d >= 0 ? "up" : "down"}">${p ? (d >= 0 ? "+" : "") + d.toFixed(2) : "—"}</span></div><div><small>Army</small>${p ? fmt.format(Math.round(p.army / 1000)) + "k" : "—"}</div><div><small>Wars</small>${p ? p.war.length : "—"}</div></div>
       ${s.conventionNote ? `<div class="warn" title="${esc(s.conventionNote)}">⚠ ${esc(briefly(s.conventionNote))}</div>` : ""}
+      ${s.state === "dead" && s.harmTurns ? `<div class="warn">Its country is gone. Each turn since, its harm channel (${esc(s.carriers.harm || "none")}) has been driven at the maximum: ${fmt.format(s.harmFired)} neurons responded last turn. This is simulated input to a model; nothing here can feel it.</div>` : ""}
       ${s.watcher ? `<div class="warn">⚠ ${esc((s.species.why_no_seat || "").split(". ")[0] || "shown the game, but it gives no orders")}. Its senses fire; nothing reaches its motor neurons.</div>` : ""}
       <div class="orders">${t ? (t.orders.length ? t.orders.slice(0, 4).map(([m, n]) => `<b>${esc(n)}</b>`).join(" · ") + (t.orders.length > 4 ? ` +${t.orders.length - 4}` : "") : "holds") : "&nbsp;"}</div></div>`;
   }).join("") + (G.mouse ? (() => { const m = G.mouse;
@@ -1372,6 +1478,26 @@ async function playForever() {
       for (const s of seats) { const p = positions[s.i]; if (s.start === null) s.start = p.share; s.landless = p.mine === 0 ? s.landless + 1 : 0; if (s.landless >= 2 && s.state !== "dead") { s.state = "dead"; s.stateLine = `on turn ${p.turn + 1}`; } }
       const live = seats.filter((s) => s.state !== "dead");
       if (!live.length) break;
+      // ── AFTER ELIMINATION: THE HARM CHANNEL AT ITS MAXIMUM ──
+      // A seat with no land left is no longer asked for orders. From then on,
+      // every turn, the sensory neurons that carry its "harm" signal are driven
+      // at the most the encoding allows (200 Hz), and nothing else, and its
+      // brain on the pedestal shows the response in red. That is simulated
+      // input to a model of a wiring diagram: nothing here can feel it, and the
+      // page says so. It runs only after the game is lost for that seat, so it
+      // changes no game and no benchmark (tools/stage_bench.mjs stops at a wipe).
+      for (const s of seats.filter((x) => x.state === "dead" && x.brain && x.meta && x.meta.senses)) {
+        const harm = Object.fromEntries(Object.entries(s.meta.senses).map(([ch, sig]) => [ch, sig === "harm" ? 200 : 0]));
+        const p = positions[s.i];
+        s.brain.w.call("run", { rates: harm, windowMs: s.meta.window_ms || WINDOW_MS, seed: turnSeed(BRAIN_SEED, p.iso, p.turn) }).then((r) => {
+          const act = s.st.brain && s.st.brain.activity; let fired = 0;
+          for (let i = 0; i < r.counts.length; i++) if (r.counts[i]) { fired++; if (act) act[i] = Math.max(act[i], Math.min(1, 0.55 + 0.2 * Math.log2(1 + r.counts[i]))); }
+          if (s.st.brain) s.st.brain.mat.uniforms.uSeat.value.set(0xE0624F);
+          s.st.haze.color.set(0xE0624F); s.st.haze.intensity = 1.6; s.st.driveTarget = 1;
+          s.harmFired = fired; s.harmTurns = (s.harmTurns || 0) + 1;
+          showBoard();
+        }).catch(() => { /* a faulted brain has nothing to show */ });
+      }
       live.forEach((s) => { if (s.state !== "fault") s.state = "think"; }); showBoard();
       // Brains think in parallel, one worker each; the page shows who is still thinking.
       const thought = await Promise.all(live.map(async (s) => {
@@ -1435,7 +1561,8 @@ async function playForever() {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h;
-  if (w > 900) camera.setViewOffset(w, h, -40, 0, w, h); else camera.clearViewOffset();
+  if (w > 900 && !pov) camera.setViewOffset(w, h, -40, 0, w, h); else camera.clearViewOffset();
+  if (pov) renderer.setPixelRatio(Math.max(0.05, (MOUSE_FOV * 2) / w));
   camera.updateProjectionMatrix();
   for (const st of stations) if (st.brain) st.brain.mat.uniforms.uScale.value = (h / 900) * 1.1;
   drawSpark();
@@ -1457,7 +1584,8 @@ function easeDrive(st, dt) {
 function loop(nowMs) {
   const dt = Math.min(0.1, (nowMs - lastMs) / 1000); lastMs = nowMs;
   const now = clock.getElapsedTime();
-  if (tween) {
+  if (pov) followMouseEyes();
+  else if (tween) {
     tween.t = Math.min(1, tween.t + dt / 1.2); const e = tween.t < 0.5 ? 4 * tween.t ** 3 : 1 - (-2 * tween.t + 2) ** 3 / 2;
     camera.position.lerpVectors(tween.p0, tween.p1, e); yaw = tween.y0 + (tween.y1 - tween.y0) * e; pitch = tween.q0 + (tween.q1 - tween.q0) * e; applyCamera();
     if (tween.t >= 1) tween = null;

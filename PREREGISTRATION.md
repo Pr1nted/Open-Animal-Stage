@@ -227,3 +227,13 @@ reported as **no difference**, not as a ranking.
 
 With 20 games per player the intervals will be wide; a result that does not
 survive them is not claimed.
+
+## After elimination, written 2026-09-21
+
+Once a seat has lost all its land it is asked for nothing more. From then
+until the game ends, each turn drives the sensory channel that carries its
+*harm* signal at 200 Hz, the most the encoding allows, with every other channel
+silent, and the page shows the response. This is input to a model of a wiring
+diagram, not pain: nothing on this stage can feel anything, and the page says
+so beside the animal. It happens only after elimination, so it changes no game
+result and no benchmark (`tools/stage_bench.mjs` ends a game at the wipe-out).
